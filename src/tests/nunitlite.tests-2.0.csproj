@@ -69,10 +69,12 @@
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="Api\TestAssemblyRunnerTests.cs" />
     <Compile Include="Api\FrameworkControllerTests.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Api\ResultStateTests.cs" />
+    <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Assertions\ArrayEqualsFailureMessageFixture.cs" />
     <Compile Include="Assertions\ArrayEqualsFixture.cs" />
     <Compile Include="Assertions\ArrayNotEqualFixture.cs" />
@@ -116,10 +118,12 @@
     <Compile Include="Attributes\TheoryTests.cs" />
     <Compile Include="Attributes\ThreadingTests.cs" />
     <Compile Include="Attributes\ValuesAttributeEnumTests.cs" />
+    <Compile Include="Attributes\TimeoutTests.cs" />
     <Compile Include="Attributes\ValuesAttributeTests.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Attributes\ValueSourceTests.cs" />
+    <Compile Include="Compatibility\StopwatchTests.cs" />
     <Compile Include="Constraints\AllItemsConstraintTests.cs" />
     <Compile Include="Constraints\AndConstraintTests.cs" />
     <Compile Include="Constraints\AssignableFromConstraintTests.cs" />
@@ -261,13 +265,16 @@
       <Name>nunitlite-2.0</Name>
     </ProjectReference>
     <ProjectReference Include="..\mock-assembly\mock-nunitlite-assembly-2.0.csproj">
-      <Project>{7be679ef-3853-4e06-b4eb-c4c6808bc3f0}</Project>
+      <Project>{7BE679EF-3853-4E06-B4EB-C4C6808BC3F0}</Project>
       <Name>mock-nunitlite-assembly-2.0</Name>
     </ProjectReference>
     <ProjectReference Include="..\testdata\nunitlite.testdata-2.0.csproj">
       <Project>{442DAB16-3063-4FE3-90B6-C29C3D85360D}</Project>
       <Name>nunitlite.testdata-2.0</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

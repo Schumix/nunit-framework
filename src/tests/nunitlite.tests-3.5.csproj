@@ -71,6 +71,8 @@
     </Compile>
     <Compile Include="Api\FrameworkControllerTests.cs" />
     <Compile Include="Api\ResultStateTests.cs" />
+    <Compile Include="Api\TestAssemblyRunnerTests.cs" />
+    <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Assertions\ArrayEqualsFailureMessageFixture.cs" />
     <Compile Include="Assertions\ArrayEqualsFixture.cs" />
     <Compile Include="Assertions\ArrayNotEqualFixture.cs" />
@@ -114,10 +116,12 @@
     <Compile Include="Attributes\TheoryTests.cs" />
     <Compile Include="Attributes\ThreadingTests.cs" />
     <Compile Include="Attributes\ValuesAttributeEnumTests.cs" />
+    <Compile Include="Attributes\TimeoutTests.cs" />
     <Compile Include="Attributes\ValuesAttributeTests.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Attributes\ValueSourceTests.cs" />
+    <Compile Include="Compatibility\StopwatchTests.cs" />
     <Compile Include="Constraints\AllItemsConstraintTests.cs" />
     <Compile Include="Constraints\AndConstraintTests.cs" />
     <Compile Include="Constraints\AssignableFromConstraintTests.cs" />
@@ -259,13 +263,16 @@
       <Name>nunitlite-3.5</Name>
     </ProjectReference>
     <ProjectReference Include="..\mock-assembly\mock-nunitlite-assembly-3.5.csproj">
-      <Project>{54140ea6-eb39-49ff-ba63-997ebd41ea8f}</Project>
+      <Project>{54140EA6-EB39-49FF-BA63-997EBD41EA8F}</Project>
       <Name>mock-nunitlite-assembly-3.5</Name>
     </ProjectReference>
     <ProjectReference Include="..\testdata\nunitlite.testdata-3.5.csproj">
       <Project>{749FF626-F36B-45C1-8A80-AB21A3655292}</Project>
       <Name>nunitlite.testdata-3.5</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

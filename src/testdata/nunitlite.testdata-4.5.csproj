@@ -121,9 +121,12 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\framework\nunitlite-4.5.csproj">
-      <Project>{22857a11-108d-48c6-9a23-2217d2f2c365}</Project>
+      <Project>{22857A11-108D-48C6-9A23-2217D2F2C365}</Project>
       <Name>nunitlite-4.5</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

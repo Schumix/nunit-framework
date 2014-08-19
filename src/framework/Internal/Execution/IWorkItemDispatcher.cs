@@ -1,5 +1,5 @@
-// ***********************************************************************
-// Copyright (c) 2008 Charlie Poole
+﻿// ***********************************************************************
+// Copyright (c) 2014 Charlie Poole
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -21,49 +21,25 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
 
-#if !NETCF && !SILVERLIGHT
-using System.Collections.Specialized;
-using System.Configuration;
-
 namespace NUnit.Framework.Internal.Execution
 {
     /// <summary>
-    /// LogCapture is the abstract base for classes that
-    /// capture log info from a specific logging system.
+    /// An IWorkItemDispatcher handles execution of work items.
     /// </summary>
-    public abstract class LogCapture : TextCapture
+    public interface IWorkItemDispatcher
     {
-        private string defaultThreshold;
+        /// <summary>
+        /// Dispatch a single work item for execution. The first
+        /// work item dispatched is saved as the top-level
+        /// work item and used when stopping the run.
+        /// </summary>
+        /// <param name="work">The item to dispatch</param>
+        void Dispatch(WorkItem work);
 
         /// <summary>
-        /// The default threshold for log capture
-        /// is read from the config file. If not
-        /// found, we use "Error".
+        /// Cancel the ongoing run completely.
+        /// If no run is in process, the call has no effect.
         /// </summary>
-        public override string DefaultThreshold
-        {
-            get
-            {
-                if (defaultThreshold == null)
-                {
-                    defaultThreshold = "Error";
-
-#if !NUNITLITE
-                    NameValueCollection settings = (NameValueCollection)
-                        ConfigurationManager.GetSection("NUnit/TestRunner");
-
-                    if (settings != null)
-                    {
-                        string level = settings[Api.DriverSettings.DefaultLogThreshold];
-                        if (level != null)
-                            defaultThreshold = level;
-                    }
-#endif
-                }
-
-                return defaultThreshold;
-            }
-        }
+        void CancelRun();
     }
 }
-#endif

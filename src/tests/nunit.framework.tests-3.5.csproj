@@ -31,10 +31,11 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
     <DefineConstants>TRACE;DEBUG;NET_3_5</DefineConstants>
     <OutputPath>..\..\bin\Debug\net-3.5\</OutputPath>
-    <DebugType>none</DebugType>
+    <DebugType>full</DebugType>
     <WarningLevel>4</WarningLevel>
     <Optimize>false</Optimize>
     <NoWarn>0414</NoWarn>
+    <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
@@ -50,6 +51,8 @@
     </Compile>
     <Compile Include="Api\FrameworkControllerTests.cs" />
     <Compile Include="Api\ResultStateTests.cs" />
+    <Compile Include="Api\TestAssemblyRunnerTests.cs" />
+    <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Assertions\ArrayEqualsFailureMessageFixture.cs" />
     <Compile Include="Assertions\ArrayEqualsFixture.cs" />
     <Compile Include="Assertions\ArrayNotEqualFixture.cs" />
@@ -105,6 +108,7 @@
     <Compile Include="Attributes\ValuesAttributeEnumTests.cs" />
     <Compile Include="Attributes\ValuesAttributeTests.cs" />
     <Compile Include="Attributes\ValueSourceTests.cs" />
+    <Compile Include="Compatibility\StopwatchTests.cs" />
     <Compile Include="Constraints\AllItemsConstraintTests.cs" />
     <Compile Include="Constraints\AndConstraintTests.cs" />
     <Compile Include="Constraints\AssignableToConstraintTests.cs" />
@@ -241,7 +245,7 @@
       <Name>nunit.framework-3.5</Name>
     </ProjectReference>
     <ProjectReference Include="..\mock-assembly\mock-nunit-assembly-3.5.csproj">
-      <Project>{7c36e4b4-16a7-450b-9919-ba35825f46b6}</Project>
+      <Project>{7C36E4B4-16A7-450B-9919-BA35825F46B6}</Project>
       <Name>mock-nunit-assembly-3.5</Name>
     </ProjectReference>
     <ProjectReference Include="..\testdata\nunit.testdata-3.5.csproj">

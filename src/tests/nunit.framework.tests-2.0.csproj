@@ -51,7 +51,7 @@
       <Name>nunit.framework-2.0</Name>
     </ProjectReference>
     <ProjectReference Include="..\mock-assembly\mock-nunit-assembly-2.0.csproj">
-      <Project>{2e368281-3ba8-4050-b05e-0e0e43f8f446}</Project>
+      <Project>{2E368281-3BA8-4050-B05E-0E0E43F8F446}</Project>
       <Name>mock-nunit-assembly-2.0</Name>
     </ProjectReference>
     <ProjectReference Include="..\testdata\nunit.testdata-2.0.csproj">
@@ -65,6 +65,7 @@
     </Compile>
     <Compile Include="Api\FrameworkControllerTests.cs" />
     <Compile Include="Api\ResultStateTests.cs" />
+    <Compile Include="Api\TestAssemblyRunnerTests.cs" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Assertions\ArrayEqualsFailureMessageFixture.cs" />
     <Compile Include="Assertions\ArrayEqualsFixture.cs" />
@@ -119,8 +120,10 @@
     <Compile Include="Attributes\TheoryTests.cs" />
     <Compile Include="Attributes\ThreadingTests.cs" />
     <Compile Include="Attributes\ValuesAttributeEnumTests.cs" />
+    <Compile Include="Attributes\TimeoutTests.cs" />
     <Compile Include="Attributes\ValuesAttributeTests.cs" />
     <Compile Include="Attributes\ValueSourceTests.cs" />
+    <Compile Include="Compatibility\StopwatchTests.cs" />
     <Compile Include="Constraints\AllItemsConstraintTests.cs" />
     <Compile Include="Constraints\AndConstraintTests.cs" />
     <Compile Include="Constraints\AssignableToConstraintTests.cs" />
@@ -202,6 +205,7 @@
     <Compile Include="Internal\UnexpectedExceptionTests.cs" />
     <Compile Include="Internal\UnhandledExceptionTests.cs" />
     <Compile Include="Internal\WorkItemQueueTests.cs" />
+    <Compile Include="Internal\WorkShiftTests.cs" />
     <Compile Include="Syntax\AfterTests.cs" />
     <Compile Include="Syntax\ArbitraryConstraintMatching.cs" />
     <Compile Include="Syntax\CollectionTests.cs" />
@@ -256,5 +260,8 @@
     <None Include="nunitlite.tests.build">
       <SubType>Designer</SubType>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
   </ItemGroup>
 </Project>
