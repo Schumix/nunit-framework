@@ -5,7 +5,7 @@ EXTRA_DIST =
 
 if ENABLE_DEBUG
 ASSEMBLY_COMPILER_COMMAND = dmcs
-ASSEMBLY_COMPILER_FLAGS =  -noconfig -codepage:utf8 -warn:4 -optimize- "-nowarn:1699,414,3006,612" -debug "-define:TRACE;DEBUG;NET_4_0" "-keyfile:nunit.snk"
+ASSEMBLY_COMPILER_FLAGS =  -noconfig -codepage:utf8 -warn:4 -optimize- "-nowarn:1699,414,3006,612,219" -debug "-define:TRACE;DEBUG;NET_4_0" "-keyfile:nunit.snk"
 ASSEMBLY = ../../bin/Debug/net-4.0/nunit.framework.dll
 ASSEMBLY_MDB = $(ASSEMBLY).mdb
 COMPILE_TARGET = library
@@ -19,7 +19,7 @@ endif
 
 if ENABLE_RELEASE
 ASSEMBLY_COMPILER_COMMAND = dmcs
-ASSEMBLY_COMPILER_FLAGS =  -noconfig -codepage:utf8 -warn:4 -optimize+ "-nowarn:414,3006,612" "-define:TRACE;NET_4_0" "-keyfile:nunit.snk"
+ASSEMBLY_COMPILER_FLAGS =  -noconfig -codepage:utf8 -warn:4 -optimize+ "-nowarn:414,3006,612,219" "-define:TRACE;NET_4_0" "-keyfile:nunit.snk"
 ASSEMBLY = ../../bin/Release/net-4.0/nunit.framework.dll
 ASSEMBLY_MDB = 
 COMPILE_TARGET = library
@@ -46,10 +46,13 @@ all: $(ASSEMBLY) $(PROGRAMFILES) $(LINUX_PKGCONFIG)
 
 FILES = \
 	../CommonAssemblyInfo.cs \
+	Api/AbstractTestAssemblyRunner.cs \
 	Api/DefaultTestAssemblyBuilder.cs \
-	Api/DefaultTestAssemblyRunner.cs \
 	Api/DriverSettings.cs \
 	Api/FrameworkController.cs \
+	Api/ITestAssemblyBuilder.cs \
+	Api/ITestAssemblyRunner.cs \
+	Api/NUnitTestAssemblyRunner.cs \
 	AssemblyInfo.cs \
 	Assert.cs \
 	AssertionHelper.cs \
@@ -103,6 +106,7 @@ FILES = \
 	Attributes/ValueSourceAttribute.cs \
 	CollectionAssert.cs \
 	Compatibility/SerializableAttribute.cs \
+	Compatibility/Stopwatch.cs \
 	Constraints/AllItemsConstraint.cs \
 	Constraints/AndConstraint.cs \
 	Constraints/AssignableFromConstraint.cs \
@@ -219,8 +223,6 @@ FILES = \
 	Interfaces/ISimpleTestBuilder.cs \
 	Interfaces/ISuiteBuilder.cs \
 	Interfaces/ITest.cs \
-	Interfaces/ITestAssemblyBuilder.cs \
-	Interfaces/ITestAssemblyRunner.cs \
 	Interfaces/ITestBuilder.cs \
 	Interfaces/ITestCaseBuilder.cs \
 	Interfaces/ITestCaseData.cs \
@@ -270,17 +272,17 @@ FILES = \
 	Internal/Execution/EventListenerTextWriter.cs \
 	Internal/Execution/EventPump.cs \
 	Internal/Execution/EventQueue.cs \
-	Internal/Execution/Log4NetCapture.cs \
-	Internal/Execution/LogCapture.cs \
+	Internal/Execution/IWorkItemDispatcher.cs \
+	Internal/Execution/ParallelWorkItemDispatcher.cs \
 	Internal/Execution/QueuingEventListener.cs \
 	Internal/Execution/SimpleWorkItem.cs \
+	Internal/Execution/SimpleWorkItemDispatcher.cs \
 	Internal/Execution/TestWorker.cs \
-	Internal/Execution/TextCapture.cs \
 	Internal/Execution/TextMessageWriter.cs \
 	Internal/Execution/WorkItem.cs \
-	Internal/Execution/WorkItemDispatcher.cs \
 	Internal/Execution/WorkItemQueue.cs \
 	Internal/Execution/WorkItemState.cs \
+	Internal/Execution/WorkShift.cs \
 	Internal/Filters/AndFilter.cs \
 	Internal/Filters/CategoryExpression.cs \
 	Internal/Filters/CategoryFilter.cs \
