@@ -1,6 +1,6 @@
 #! /bin/sh
 
-PROJECT=NUnitFramework.Schumix
+PROJECT=nunit.Schumix
 FILE=
 CONFIGURE=configure.ac
 

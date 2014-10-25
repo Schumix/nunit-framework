@@ -1,7 +1,7 @@
 dnl Warning: This is an automatically generated file, do not edit!
 dnl Process this file with autoconf to produce a configure script.
 AC_PREREQ([2.54])
-AC_INIT([NUnitFramework.Schumix], [0.1])
+AC_INIT([nunit.Schumix], [0.1])
 AM_INIT_AUTOMAKE([foreign])
 AM_MAINTAINER_MODE
 
@@ -51,8 +51,8 @@ dnl package checks, per config
 
 
 AC_CONFIG_FILES([
-src/framework/nunit.framework.schumix.pc
-src/framework/Makefile
+src/NUnitFramework/framework/nunit.framework.schumix.pc
+src/NUnitFramework/framework/Makefile
 Makefile
 
 ])
