@@ -1,6 +1,0 @@
-Name: nunit.framework.Schumix
-Description: nunit.framework.Schumix
-Version: 0.1
-
-Requires: 
-Libs: -r:@expanded_libdir@/@PACKAGE@/nunit.framework.dll
