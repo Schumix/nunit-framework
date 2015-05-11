@@ -363,7 +363,8 @@ REFERENCES =  \
 	System.Data \
 	System.Configuration \
 	System.Web \
-	System.Xml
+	System.Xml \
+	System.Core
 
 DLL_REFERENCES = 
 
