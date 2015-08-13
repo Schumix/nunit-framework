@@ -1,5 +1,5 @@
 ﻿// ***********************************************************************
-// Copyright (c) 2011 Charlie Poole
+// Copyright (c) 2011-2015 Charlie Poole
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -24,46 +24,56 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 
 namespace NUnit.Engine
 {
     /// <summary>
-    /// TestPackage holds information about a set of tests to
+    /// TestPackage holds information about a set of test files to
     /// be loaded by a TestRunner. Each TestPackage represents
-    /// tests for a single assembly. Multiple assemblies are
-    /// represented by use of subpackages.
+    /// tests for one or more test files. TestPackages may be named 
+    /// or anonymous, depending on how they are constructed.
     /// </summary>
     [Serializable]
     public class TestPackage
     {
-        private string fullName;
-        private List<string> testFiles = new List<string>();
-        private Dictionary<string, object> settings = new Dictionary<string, object>();
-
         #region Constructors
 
         /// <summary>
-        /// Construct a TestPackage, specifying a file path for
+        /// Construct a named TestPackage, specifying a file path for
         /// the assembly or project to be used.
         /// </summary>
         /// <param name="filePath">The file path.</param>
         public TestPackage(string filePath)
         {
-            fullName = Path.GetFullPath(filePath);
-            if (IsAssemblyFileType(filePath))
-                Add(FullName);
+            ID = GetNextID();
+
+            if (filePath != null)
+            {
+                FullName = Path.GetFullPath(filePath);
+                Settings = new Dictionary<string, object>();
+                SubPackages = new List<TestPackage>();
+            }
         }
 
         /// <summary>
-        /// Construct an anonymous TestPackage that wraps 
-        /// multiple assemblies or projects as subpackages.
+        /// Construct an anonymous TestPackage that wraps test files.
         /// </summary>
         /// <param name="testFiles"></param>
         public TestPackage(IList<string> testFiles)
         {
+            ID = GetNextID();
+            SubPackages = new List<TestPackage>();
+            Settings = new Dictionary<string, object>();
+
             foreach (string testFile in testFiles)
-                Add(Path.GetFullPath(testFile));
+                SubPackages.Add(new TestPackage(testFile));
+        }
+
+        private static int _nextID = 0;
+
+        private string GetNextID()
+        {
+            return (_nextID++).ToString();
         }
 
         #endregion
@@ -71,49 +81,71 @@ namespace NUnit.Engine
         #region Properties
 
         /// <summary>
+        /// Every test package gets a unique ID used to prefix test IDs within that package.
+        /// </summary>
+        /// <remarks>
+        /// The generated ID is only unique for packages created within the same AppDomain.
+        /// For that reason, NUnit pre-creates all test packages that will be needed.
+        /// </remarks>
+        public string ID { get; private set; }
+
+        /// <summary>
         /// Gets the name of the package
         /// </summary>
         public string Name
         {
-            get { return fullName == null ? null : Path.GetFileName(fullName); }
+            get { return FullName == null ? null : Path.GetFileName(FullName); }
         }
 
         /// <summary>
         /// Gets the path to the file containing tests. It may be
         /// an assembly or a recognized project type.
         /// </summary>
-        public string FullName
-        {
-            get { return fullName; }
-        }
+        public string FullName { get; private set; }
 
         /// <summary>
-        /// Gets an array of the test files contained in this package
+        /// Gets the list of SubPackages contained in this package
         /// </summary>
-        public string[] TestFiles
-        {
-            get { return testFiles.ToArray(); }
-        }
+        public IList<TestPackage> SubPackages { get; private set; }
 
         /// <summary>
         /// Gets the settings dictionary for this package.
         /// </summary>
-        public IDictionary<string,object> Settings
-        {
-            get { return settings; }
-        }
+        public IDictionary<string,object> Settings { get; private set; }
 
         #endregion
 
         #region Public Methods
 
         /// <summary>
-        /// Add a test file to the package.
+        /// Add a subproject to the package.
         /// </summary>
-        /// <param name="testFile">The test file to be added</param>
-        public void Add(string testFile)
+        /// <param name="subPackage">The subpackage to be added</param>
+        public void AddSubPackage(TestPackage subPackage)
         {
-            testFiles.Add(testFile);
+            SubPackages.Add(subPackage);
+
+            foreach (var key in Settings.Keys)
+                subPackage.Settings[key] = Settings[key];
+        }
+
+        /// <summary>
+        /// Add a setting to a package and all of its subpackages.
+        /// </summary>
+        /// <param name="name">The name of the setting</param>
+        /// <param name="value">The value of the setting</param>
+        /// <remarks>
+        /// Once a package is created, subpackages may have been created
+        /// as well. If you add a setting directly to the Settings dictionary
+        /// of the package, the subpackages are not updated. This method is
+        /// used when the settings are intended to be reflected to all the
+        /// subpackages under the package.
+        /// </remarks>
+        public void AddSetting(string name, object value)
+        {
+            Settings[name] = value;
+            foreach (var subPackage in SubPackages)
+                subPackage.AddSetting(name, value);
         }
 
         /// <summary>

@@ -1,4 +1,4 @@
-﻿// ***********************************************************************
+// ***********************************************************************
 // Copyright (c) 2008 Charlie Poole
 //
 // Permission is hereby granted, free of charge, to any person obtaining
@@ -21,7 +21,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
 
-#if !SILVERLIGHT
+#if !SILVERLIGHT && !PORTABLE && !NETCF
 using System;
 using System.Threading;
 using NUnit.Framework.Internal;
@@ -35,6 +35,7 @@ namespace NUnit.Framework
     /// On methods, you may also use MTAThreadAttribute
     /// to serve the same purpose.
     /// </summary>
+    [Obsolete("Use ApartmentAttribute and pass in ApartmentState.MTA instead")]
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Assembly, AllowMultiple = false, Inherited=true)]
     public class RequiresMTAAttribute : PropertyAttribute
     {

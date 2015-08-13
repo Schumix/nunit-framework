@@ -1,5 +1,5 @@
 // ***********************************************************************
-// Copyright (c) 2007 Charlie Poole
+// Copyright (c) 2007-2015 Charlie Poole
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -31,6 +31,7 @@ using System.Diagnostics;
 using System.Security;
 using System.Security.Policy;
 using System.Security.Principal;
+using NUnit.Common;
 using NUnit.Engine.Internal;
 
 namespace NUnit.Engine.Services
@@ -39,31 +40,14 @@ namespace NUnit.Engine.Services
     /// The DomainManager class handles the creation and unloading
     /// of domains as needed and keeps track of all existing domains.
     /// </summary>
-    public class DomainManager : IService
+    public class DomainManager : Service
     {
         static Logger log = InternalTrace.GetLogger(typeof(DomainManager));
 
-        #region Properties
-
-        private string shadowCopyPath;
-        private string ShadowCopyPath
-        {
-            get
-            {
-                if ( shadowCopyPath == null )
-                {
-                    shadowCopyPath = ServiceContext.UserSettings.GetSetting("Options.TestLoader.ShadowCopyPath", "");
-                    if (shadowCopyPath == "")
-                        shadowCopyPath = PathUtils.Combine(NUnitConfiguration.ApplicationDirectory, "ShadowCopyCache");
-                    else
-                        shadowCopyPath = Environment.ExpandEnvironmentVariables(shadowCopyPath);
-                }
-
-                return shadowCopyPath;
-            }
-        }
-
-        #endregion
+        // Default settings used if SettingsService is unavailable
+        private string _shadowCopyPath = Path.Combine(NUnitConfiguration.NUnitBinDirectory, "ShadowCopyCache");
+        private PrincipalPolicy _principalPolicy = PrincipalPolicy.UnauthenticatedPrincipal;
+        private bool _setPrincipalPolicy = false;
 
         #region Create and Unload Domains
         /// <summary>
@@ -90,40 +74,11 @@ namespace NUnit.Engine.Services
 
             log.Info("Creating AppDomain " + domainName);
 
-            AppDomain runnerDomain;
-            
-            // TODO: Find an approach that works across all platforms
-          
-            //// TODO: Try to eliminate this test. Currently, running on
-            //// Linux with the permission set specified causes an
-            //// unexplained crash when unloading the domain.
-            //if (Environment.OSVersion.Platform == PlatformID.Win32NT)
-            //{
-            //    PermissionSet permissionSet = new PermissionSet( PermissionState.Unrestricted );	
-            //    runnerDomain = AppDomain.CreateDomain(domainName, evidence, setup, permissionSet, null);
-            //}
-            //else
-                runnerDomain = AppDomain.CreateDomain(domainName, evidence, setup);
+            AppDomain runnerDomain = AppDomain.CreateDomain(domainName, evidence, setup);
             
             // Set PrincipalPolicy for the domain if called for in the settings
-                if (ServiceContext.UserSettings.GetSetting("Options.TestLoader.SetPrincipalPolicy", false))
-                    runnerDomain.SetPrincipalPolicy((PrincipalPolicy)ServiceContext.UserSettings.GetSetting(
-                    "Options.TestLoader.PrincipalPolicy", PrincipalPolicy.UnauthenticatedPrincipal));
-
-            //// HACK: Only pass down our AddinRegistry one level so that tests of NUnit
-            //// itself start without any addins defined.
-            //if ( !IsTestDomain( AppDomain.CurrentDomain ) )
-            //    runnerDomain.SetData("AddinRegistry", Services.AddinRegistry);
-
-            //// Inject DomainInitializer into the remote domain - there are other
-            //// approaches, but this works for all CLR versions.
-            //DomainInitializer initializer = DomainInitializer.CreateInstance(runnerDomain);
-
-            //// HACK: Under nunit-console, direct use of the enum fails
-            //int traceLevel = IsTestDomain(AppDomain.CurrentDomain)
-            //    ? (int)InternalTraceLevel.Off : (int)InternalTrace.Level;
-
-            //initializer.InitializeDomain(traceLevel);
+            if (_setPrincipalPolicy)
+                runnerDomain.SetPrincipalPolicy(_principalPolicy);
 
             return runnerDomain;
         }
@@ -133,16 +88,19 @@ namespace NUnit.Engine.Services
         {
             AppDomainSetup setup = new AppDomainSetup();
 
-            //For paralell tests, we need to use distinct application name
+            if (package.SubPackages.Count == 1)
+                package = package.SubPackages[0];
+
+            //For parallel tests, we need to use distinct application name
             setup.ApplicationName = "Tests" + "_" + Environment.TickCount;
 
             FileInfo testFile = package.FullName != null && package.FullName != string.Empty
                 ? new FileInfo(package.FullName)
                 : null;
 
-            string appBase = package.GetSetting(RunnerSettings.BasePath, string.Empty);
-            string configFile = package.GetSetting(RunnerSettings.ConfigurationFile, string.Empty);
-            string binPath = package.GetSetting(RunnerSettings.PrivateBinPath, string.Empty);
+            string appBase = package.GetSetting(PackageSettings.BasePath, string.Empty);
+            string configFile = package.GetSetting(PackageSettings.ConfigurationFile, string.Empty);
+            string binPath = package.GetSetting(PackageSettings.PrivateBinPath, string.Empty);
 
             if (testFile != null)
             {
@@ -150,13 +108,19 @@ namespace NUnit.Engine.Services
                     appBase = testFile.DirectoryName;
 
                 if (configFile == null || configFile == string.Empty)
-                    //configFile = Services.ProjectService.CanLoadProject(testFile.Name)
-                    //    ? Path.GetFileNameWithoutExtension(testFile.Name) + ".config"
-                    //    : testFile.Name + ".config";
                     configFile = testFile.Name + ".config";
+
+                // Setting the target framework is only supported when running with
+                // multiple AppDomains, one per assembly.
+                SetTargetFramework(testFile.FullName, setup);
             }
-            else if (appBase == null || appBase == string.Empty)
-                appBase = GetCommonAppBase(package.TestFiles);
+            else
+            {
+                if (appBase == null || appBase == string.Empty)
+                    appBase = GetCommonAppBase(package.SubPackages);
+
+                // TODO: What about config file for multiple assemblies?
+            }
 
             char lastChar = appBase[appBase.Length - 1];
             if (lastChar != Path.DirectorySeparatorChar && lastChar != Path.AltDirectorySeparatorChar)
@@ -168,12 +132,12 @@ namespace NUnit.Engine.Services
                 ? Path.Combine(appBase, configFile)
                 : configFile;
 
-            if (package.GetSetting(RunnerSettings.AutoBinPath, binPath == string.Empty))
-                binPath = GetPrivateBinPath(appBase, package.TestFiles);
+            if (package.GetSetting(PackageSettings.AutoBinPath, binPath == string.Empty))
+                binPath = GetPrivateBinPath(appBase, package.SubPackages);
 
             setup.PrivateBinPath = binPath;
 
-            if (package.GetSetting("ShadowCopyFiles", true))
+            if (package.GetSetting("ShadowCopyFiles", false))
             {
                 setup.ShadowCopyFiles = "true";
                 setup.ShadowCopyDirectories = appBase;
@@ -263,7 +227,7 @@ namespace NUnit.Engine.Services
         {
             int processId = Process.GetCurrentProcess().Id;
             long ticks = DateTime.Now.Ticks;
-            string cachePath = Path.Combine( ShadowCopyPath, processId.ToString() + "_" + ticks.ToString() ); 
+            string cachePath = Path.Combine( _shadowCopyPath, processId.ToString() + "_" + ticks.ToString() ); 
                 
             try 
             {
@@ -334,6 +298,15 @@ namespace NUnit.Engine.Services
             return domain.FriendlyName.StartsWith( "test-domain-" );
         }
 
+        public static string GetCommonAppBase(IList<TestPackage> packages)
+        {
+            var assemblies = new List<string>();
+            foreach (var package in packages)
+                assemblies.Add(package.FullName);
+
+            return GetCommonAppBase(assemblies);
+        }
+
         public static string GetCommonAppBase(IList<string> assemblies)
         {
             string commonBase = null;
@@ -348,6 +321,15 @@ namespace NUnit.Engine.Services
             }
 
             return commonBase;
+        }
+
+        public static string GetPrivateBinPath(string basePath, IList<TestPackage> packages)
+        {
+            var assemblies = new List<string>();
+            foreach (var package in packages)
+                assemblies.Add(package.FullName);
+
+            return GetPrivateBinPath(basePath, assemblies);
         }
 
         public static string GetPrivateBinPath(string basePath, IList<string> assemblies)
@@ -374,26 +356,89 @@ namespace NUnit.Engine.Services
 
         public void DeleteShadowCopyPath()
         {
-            if ( Directory.Exists( ShadowCopyPath ) )
-                Directory.Delete( ShadowCopyPath, true );
+            if ( Directory.Exists( _shadowCopyPath ) )
+                Directory.Delete( _shadowCopyPath, true );
         }
         #endregion
 
-        #region IService Members
+        #region Service Overrides
 
-        private ServiceContext services;
-        public ServiceContext ServiceContext
+        public override void StartService() 
         {
-            get { return services; }
-            set { services = value; }
+            try
+            {
+                // DomainManager has a soft dependency on the SettingsService.
+                // If it's not available, default values are used.
+                var settings = ServiceContext.GetService<ISettings>();
+                if (settings != null)
+                {
+                    var pathSetting = settings.GetSetting("Options.TestLoader.ShadowCopyPath", "");
+                    if (pathSetting != "")
+                        _shadowCopyPath = Environment.ExpandEnvironmentVariables(pathSetting);
+
+                    _setPrincipalPolicy = settings.GetSetting("Options.TestLoader.SetPrincipalPolicy", false);
+                    _principalPolicy = settings.GetSetting("Options.TestLoader.PrincipalPolicy", PrincipalPolicy.UnauthenticatedPrincipal);
+                }
+
+                Status = ServiceStatus.Started;
+            }
+            catch
+            {
+                Status = ServiceStatus.Error;
+                throw;
+            }
         }
 
-        public void UnloadService()
+        // .NET versions greater than v4.0 report as v4.0, so look at
+        // the TargetFrameworkAttribute on the assembly if it exists
+        private static void SetTargetFramework(string assemblyPath, AppDomainSetup setup)
         {
-            // TODO:  Add DomainManager.UnloadService implementation
+            var property = typeof(AppDomainSetup).GetProperty("TargetFrameworkName", BindingFlags.Public | BindingFlags.Instance);
+
+            // If property is null, .NET 4.5+ is not installed, so there is no need
+            if (property != null)
+            {
+                var domain = AppDomain.CreateDomain("TargetFrameworkDomain");
+                try
+                {
+                    var agentType = typeof(TargetFrameworkAgent);
+                    var agent = domain.CreateInstanceFromAndUnwrap(agentType.Assembly.CodeBase, agentType.FullName) as TargetFrameworkAgent;
+                    var targetFramework = agent.GetTargetFrameworkName(assemblyPath);
+                    if(!string.IsNullOrEmpty(targetFramework))
+                    {
+                        property.SetValue(setup, targetFramework, null);
+                    }
+                }
+                finally
+                {
+                    AppDomain.Unload(domain);
+                }
+            }
         }
 
-        public void InitializeService() { }
+        private class TargetFrameworkAgent : MarshalByRefObject
+        {
+            public string GetTargetFrameworkName(string assemblyPath)
+            {
+                // You can't get custom attributes when the assembly is loaded reflection only
+                var testAssembly = Assembly.LoadFrom(assemblyPath);
+
+                // This type exists on .NET 4.0+
+                var attrType = typeof(object).Assembly.GetType("System.Runtime.Versioning.TargetFrameworkAttribute");
+                var attrs = testAssembly.GetCustomAttributes(attrType, false);
+                if (attrs.Length > 0)
+                {
+                    var attr = attrs[0];
+                    var type = attr.GetType();
+                    var property = type.GetProperty("FrameworkName");
+                    if (property != null)
+                    {
+                        return property.GetValue(attr, null) as string;
+                    }
+                }
+                return null;
+            }
+        }
 
         #endregion
     }

@@ -21,7 +21,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
 
-#if !NUNITLITE
+#if !NETCF && !SILVERLIGHT && !PORTABLE
 using System;
 using System.CodeDom.Compiler;
 

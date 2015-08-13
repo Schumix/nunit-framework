@@ -22,6 +22,7 @@
 // ***********************************************************************
 
 using System;
+using NUnit.Common;
 using NUnit.Engine.Internal;
 using NUnit.Engine.Runners;
 
@@ -34,6 +35,25 @@ namespace NUnit.Engine.Services
     /// </summary>
     public class DefaultTestRunnerFactory : InProcessTestRunnerFactory, ITestRunnerFactory
     {
+        private IProjectService _projectService;
+
+        #region Service Overrides
+
+        public override void StartService()
+        {
+            // TestRunnerFactory requires the ProjectService
+            _projectService = ServiceContext.GetService<IProjectService>();
+
+            // Anything returned from ServiceContext is known to be an IService
+            Status = _projectService != null && ((IService)_projectService).Status == ServiceStatus.Started
+                ? ServiceStatus.Started
+                : ServiceStatus.Error;
+        }
+
+        #endregion
+
+        #region InProcessTestRunnerFactory Overrides
+        
         /// <summary>
         /// Returns a test runner based on the settings in a TestPackage.
         /// Any setting that is "consumed" by the factory is removed, so
@@ -44,59 +64,90 @@ namespace NUnit.Engine.Services
         /// <returns>A TestRunner</returns>
         public override ITestEngineRunner MakeTestRunner(TestPackage package)
         {
+
+            int assemblyCount = 0;
+            int projectCount = 0;
+
+            foreach (var subPackage in package.SubPackages)
+            {
+                var testFile = subPackage.FullName;
+
+                if (PathUtils.IsAssemblyFileType(testFile))
+                    assemblyCount++;
+                else if (_projectService.CanLoadFrom(testFile))
+                    projectCount++;
+            }
+
+            // If we have multiple projects or a project plus assemblies
+            // then defer to the AggregatingTestRunner, which will make
+            // the decision on a file by file basis so that each project
+            // runs with its own settings.
+            if (projectCount > 1 || projectCount > 0 && assemblyCount > 0)
+                return new AggregatingTestRunner(ServiceContext, package);
+
+            // If we have a single project by itself, expand it here.
+            if (projectCount > 0 && assemblyCount == 0)
+            {
+                var p = package.SubPackages[0];
+
+                _projectService.ExpandProjectPackage(p);
+
+                package = p;
+            }
+
+            // TODO: What about bad extensions?
+
             ProcessModel processModel = GetTargetProcessModel(package);
+            package.Settings.Remove(PackageSettings.ProcessModel);
 
             switch (processModel)
             {
-                case ProcessModel.Multiple:
-                    package.Settings.Remove("ProcessModel");
-                    return new MultipleTestProcessRunner(this.ServiceContext, package);
-                case ProcessModel.Separate:
-                    package.Settings.Remove("ProcessModel");
-                    return new ProcessRunner(this.ServiceContext, package);
                 default:
+                case ProcessModel.Default:
+                    if (package.SubPackages.Count > 1)
+                        return new MultipleTestProcessRunner(this.ServiceContext, package);
+                    else
+                        return new ProcessRunner(this.ServiceContext, package);
+
+                case ProcessModel.Multiple:
+                    return new MultipleTestProcessRunner(this.ServiceContext, package);
+
+                case ProcessModel.Separate:
+                    return new ProcessRunner(this.ServiceContext, package);
+
+                case ProcessModel.Single:
                     return base.MakeTestRunner(package);
             }
         }
 
+        // TODO: Review this method once we have a gui - not used by console runner
         public override bool CanReuse(ITestEngineRunner runner, TestPackage package)
         {
-            RuntimeFramework currentFramework = RuntimeFramework.CurrentFramework;
-            RuntimeFramework targetFramework = ServiceContext.RuntimeFrameworkSelector.SelectRuntimeFramework(package);
-
-            ProcessModel processModel = (ProcessModel)System.Enum.Parse(
-                typeof(ProcessModel),
-                package.GetSetting(RunnerSettings.ProcessModel, "Default"));
-            if (processModel == ProcessModel.Default)
-                if (!currentFramework.Supports(targetFramework))
-                    processModel = ProcessModel.Separate;
+            ProcessModel processModel = GetTargetProcessModel(package);
 
             switch (processModel)
             {
+                case ProcessModel.Default:
                 case ProcessModel.Multiple:
                     return runner is MultipleTestProcessRunner;
                 case ProcessModel.Separate:
-                    ProcessRunner processRunner = runner as ProcessRunner;
-                    return processRunner != null && processRunner.RuntimeFramework == targetFramework;
+                    return runner is ProcessRunner;
                 default:
                     return base.CanReuse(runner, package);
             }
         }
 
+        #endregion
+
+        #region Helper Methods
+
         private ProcessModel GetTargetProcessModel(TestPackage package)
         {
-            RuntimeFramework currentFramework = RuntimeFramework.CurrentFramework;
-            RuntimeFramework targetFramework = ServiceContext.RuntimeFrameworkSelector.SelectRuntimeFramework(package);
-
-            ProcessModel processModel = (ProcessModel)System.Enum.Parse(
+            return (ProcessModel)System.Enum.Parse(
                 typeof(ProcessModel),
-                package.GetSetting(RunnerSettings.ProcessModel, "Default"));
-
-            if (processModel == ProcessModel.Default)
-                if (!currentFramework.Supports(targetFramework))
-                    processModel = ProcessModel.Separate;
-
-            return processModel;
+                package.GetSetting(PackageSettings.ProcessModel, "Default"));
         }
+
+        #endregion
     }
 }

@@ -24,6 +24,7 @@
 using System;
 using System.Globalization;
 using System.IO;
+using System.Text.RegularExpressions;
 using NUnit.Framework.Interfaces;
 
 namespace NUnit.Framework.Internal
@@ -38,12 +39,17 @@ namespace NUnit.Framework.Internal
         /// <summary>
         /// Error message for when child tests have errors
         /// </summary>
-        public static readonly string CHILD_ERRORS_MESSAGE = "One or more child tests had errors";
+        internal static readonly string CHILD_ERRORS_MESSAGE = "One or more child tests had errors";
 
         /// <summary>
         /// Error message for when child tests are ignored
         /// </summary>
-        public static readonly string CHILD_IGNORE_MESSAGE = "One or more child tests were ignored";
+        internal static readonly string CHILD_IGNORE_MESSAGE = "One or more child tests were ignored";
+
+        /// <summary>
+        /// The minimum duration for tests
+        /// </summary>
+        internal const double MIN_DURATION = 0.000001d;
 
 //        static Logger log = InternalTrace.GetLogger("TestResult");
 
@@ -53,6 +59,7 @@ namespace NUnit.Framework.Internal
         private System.Collections.Generic.List<ITestResult> _children;
 
         private StringWriter _outWriter;
+        private double _duration;
 
         #endregion
 
@@ -100,9 +107,13 @@ namespace NUnit.Framework.Internal
         }
 
         /// <summary>
-        /// Gets or sets the elapsed time for running the test
+        /// Gets or sets the elapsed time for running the test in seconds
         /// </summary>
-        public TimeSpan Duration { get; set; }
+        public double Duration
+        {
+            get { return _duration; }
+            set { _duration = value >= MIN_DURATION ? value : MIN_DURATION; }
+        }
 
         /// <summary>
         /// Gets or sets the time the test started running.
@@ -119,6 +130,18 @@ namespace NUnit.Framework.Internal
         /// failure or with not running the test
         /// </summary>
         public string Message { get; private set; }
+
+        /// <summary>
+        /// Gets the escaped message associated with a test
+        /// failure or with not running the test
+        /// </summary>
+        public string EscapedMessage
+        {
+            get
+            {
+                return EscapeInvalidXmlCharacters(Message);
+            }
+        }
 
         /// <summary>
         /// Gets any stacktrace associated with an
@@ -213,13 +236,9 @@ namespace NUnit.Framework.Internal
         /// </summary>
         /// <param name="recursive">If true, descendant results are included</param>
         /// <returns>An XmlNode representing the result</returns>
-        public XmlNode ToXml(bool recursive)
+        public TNode ToXml(bool recursive)
         {
-            XmlNode topNode = XmlNode.CreateTopLevelElement("dummy");
-
-            AddToXml(topNode, recursive);
-
-            return topNode.FirstChild;
+            return AddToXml(new TNode("dummy"), recursive);
         }
 
         /// <summary>
@@ -229,10 +248,10 @@ namespace NUnit.Framework.Internal
         /// <param name="parentNode">The parent node.</param>
         /// <param name="recursive">If true, descendant results are included</param>
         /// <returns></returns>
-        public virtual XmlNode AddToXml(XmlNode parentNode, bool recursive)
+        public virtual TNode AddToXml(TNode parentNode, bool recursive)
         {
             // A result node looks like a test node with extra info added
-            XmlNode thisNode = this.Test.AddToXml(parentNode, false);
+            TNode thisNode = this.Test.AddToXml(parentNode, false);
 
             thisNode.AddAttribute("result", ResultState.Status.ToString());
             if (ResultState.Label != string.Empty) // && ResultState.Label != ResultState.Status.ToString())
@@ -242,7 +261,7 @@ namespace NUnit.Framework.Internal
 
             thisNode.AddAttribute("start-time", StartTime.ToString("u"));
             thisNode.AddAttribute("end-time", EndTime.ToString("u"));
-            thisNode.AddAttribute("duration", Duration.TotalSeconds.ToString("0.000000", NumberFormatInfo.InvariantInfo));
+            thisNode.AddAttribute("duration", Duration.ToString("0.000000", NumberFormatInfo.InvariantInfo));
 
             if (this.Test is TestSuite)
             {
@@ -315,28 +334,9 @@ namespace NUnit.Framework.Internal
 
                     case TestStatus.Skipped:
 
-                        switch (result.ResultState.Label)
-                        {
-                            case "Invalid":
-                                if (this.ResultState != ResultState.NotRunnable && this.ResultState.Status != TestStatus.Failed)
-                                    this.SetResult(ResultState.ChildFailure, CHILD_ERRORS_MESSAGE);
-
-                                break;
-
-                            case "Ignored":
-
-                                if (this.ResultState.Status == TestStatus.Inconclusive || this.ResultState.Status == TestStatus.Passed)
-                                    this.SetResult(ResultState.Ignored, CHILD_IGNORE_MESSAGE);
-
-                                break;
-
-                            default:
-
-                                // Tests skipped for other reasons do not change the outcome
-                                // of the containing suite when added.
-
-                                break;
-                        }
+                        if (result.ResultState.Label == "Ignored")
+                            if (this.ResultState.Status == TestStatus.Inconclusive || this.ResultState.Status == TestStatus.Passed)
+                                this.SetResult(ResultState.Ignored, CHILD_IGNORE_MESSAGE);
 
                         break;
 
@@ -418,10 +418,12 @@ namespace NUnit.Framework.Internal
                 SetResult(((ResultStateException)ex).ResultState,
                     ex.Message,
                     StackFilter.Filter(ex.StackTrace));
+#if !PORTABLE
             else if (ex is System.Threading.ThreadAbortException)
                 SetResult(ResultState.Cancelled,
                     "Test cancelled by user",
                     ex.StackTrace);
+#endif
             else
                 SetResult(ResultState.Error,
                     ExceptionHelper.BuildMessage(ex),
@@ -442,10 +444,12 @@ namespace NUnit.Framework.Internal
                 SetResult(((ResultStateException)ex).ResultState.WithSite(site),
                     ex.Message,
                     StackFilter.Filter(ex.StackTrace));
+#if !PORTABLE
             else if (ex is System.Threading.ThreadAbortException)
                 SetResult(ResultState.Cancelled.WithSite(site),
                     "Test cancelled by user",
                     ex.StackTrace);
+#endif
             else
                 SetResult(ResultState.Error.WithSite(site),
                     ExceptionHelper.BuildMessage(ex),
@@ -494,11 +498,10 @@ namespace NUnit.Framework.Internal
         /// </summary>
         /// <param name="targetNode">The target node.</param>
         /// <returns>The new reason element.</returns>
-        private XmlNode AddReasonElement(XmlNode targetNode)
+        private TNode AddReasonElement(TNode targetNode)
         {
-            XmlNode reasonNode = targetNode.AddElement("reason");
-            reasonNode.AddElement("message").TextContent = this.Message;
-            return reasonNode;
+            TNode reasonNode = targetNode.AddElement("reason");
+            return reasonNode.AddElement("message", EscapedMessage);
         }
 
         /// <summary>
@@ -506,29 +509,36 @@ namespace NUnit.Framework.Internal
         /// </summary>
         /// <param name="targetNode">The target node.</param>
         /// <returns>The new failure element.</returns>
-        private XmlNode AddFailureElement(XmlNode targetNode)
+        private TNode AddFailureElement(TNode targetNode)
         {
-            XmlNode failureNode = targetNode.AddElement("failure");
+            TNode failureNode = targetNode.AddElement("failure");
 
-            if (this.Message != null)
-            {
-                failureNode.AddElement("message").TextContent = this.Message;
-            }
+            if (Message != null)
+                failureNode.AddElement("message", EscapedMessage);
 
-            if (this.StackTrace != null)
-            {
-                failureNode.AddElement("stack-trace").TextContent = this.StackTrace;
-            }
+            if (StackTrace != null)
+                failureNode.AddElement("stack-trace", StackTrace);
 
             return failureNode;
         }
 
-        private XmlNode AddOutputElement(XmlNode targetNode)
+        private TNode AddOutputElement(TNode targetNode)
         {
-            XmlNode outputNode = targetNode.AddElement("output");
-            outputNode.TextContent = this.Output;
+            return targetNode.AddElement("output", Output);
+        }
 
-            return outputNode;
+        static string EscapeInvalidXmlCharacters(string str)
+        {
+            // Based on the XML spec http://www.w3.org/TR/xml/#charsets
+            // For detailed explanation of the regex see http://mnaoumov.wordpress.com/2014/06/15/escaping-invalid-xml-unicode-characters/
+
+            var invalidXmlCharactersRegex = new Regex("[^\u0009\u000a\u000d\u0020-\ufffd]|([\ud800-\udbff](?![\udc00-\udfff]))|((?<![\ud800-\udbff])[\udc00-\udfff])");
+            return invalidXmlCharactersRegex.Replace(str, match => CharToUnicodeSequence(match.Value[0]));
+        }
+
+        static string CharToUnicodeSequence(char symbol)
+        {
+            return string.Format("\\u{0}", ((int) symbol).ToString("x4"));
         }
 
         #endregion

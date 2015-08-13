@@ -23,6 +23,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using Microsoft.Win32;
@@ -273,7 +274,7 @@ namespace NUnit.Engine
             get
             {
                 foreach (RuntimeFramework framework in AvailableFrameworks)
-                    if (this.Supports(framework))
+                    if (framework.Supports(this))
                         return true;
 
                 return false;
@@ -316,7 +317,7 @@ namespace NUnit.Engine
         /// <summary>
         /// Parses a string representing a RuntimeFramework.
         /// The string may be just a RuntimeType name or just
-        /// a Version or a hyphentated RuntimeType-Version or
+        /// a Version or a hyphenated RuntimeType-Version or
         /// a Version prefixed by 'v'.
         /// </summary>
         /// <param name="s"></param>
@@ -403,8 +404,8 @@ namespace NUnit.Engine
         /// are equal. Negative (i.e. unspecified) version
         /// components are ignored.
         /// </summary>
-        /// <param name="other">The RuntimeFramework to be matched.</param>
-        /// <returns>True on match, otherwise false</returns>
+        /// <param name="target">The RuntimeFramework to be matched.</param>
+        /// <returns><c>true</c> on match, otherwise <c>false</c></returns>
         public bool Supports(RuntimeFramework target)
         {
             if (this.Runtime != RuntimeType.Any
@@ -471,6 +472,8 @@ namespace NUnit.Engine
                 foreach (string version in key.GetSubKeyNames())
                 {
                     RegistryKey subKey = key.OpenSubKey(version);
+                    if (subKey == null) continue;
+
                     string monoPrefix = subKey.GetValue("SdkInstallRoot") as string;
 
                     AppendMonoFramework(frameworks, monoPrefix, version);
@@ -532,10 +535,26 @@ namespace NUnit.Engine
                     frameworks.Add(framework);
                 }
 
+                if (Directory.Exists(Path.Combine(monoPrefix, "lib/mono/3.5")))
+                {
+                    RuntimeFramework framework = new RuntimeFramework(RuntimeType.Mono, new Version(2, 0, 50727));
+                    framework.FrameworkVersion = new Version(3,5);
+                    framework.DisplayName = string.Format(displayFmt, "3.5");
+                    frameworks.Add(framework);
+                }
+
                 if (File.Exists(Path.Combine(monoPrefix, "lib/mono/4.0/mscorlib.dll")))
                 {
                     RuntimeFramework framework = new RuntimeFramework(RuntimeType.Mono, new Version(4, 0, 30319));
                     framework.DisplayName = string.Format(displayFmt, "4.0");
+                    frameworks.Add(framework);
+                }
+
+                if (File.Exists(Path.Combine(monoPrefix, "lib/mono/4.5/mscorlib.dll")))
+                {
+                    RuntimeFramework framework = new RuntimeFramework(RuntimeType.Mono, new Version(4, 0, 30319));
+                    framework.FrameworkVersion = new Version(4,5);
+                    framework.DisplayName = string.Format(displayFmt, "4.5");
                     frameworks.Add(framework);
                 }
             }
@@ -556,8 +575,9 @@ namespace NUnit.Engine
                         if (name.StartsWith("v"))
                         {
                             var versionKey = key.OpenSubKey(name);
+                            if (versionKey == null) continue;
 
-                            if (name == "v4")
+                            if (name.StartsWith("v4", StringComparison.Ordinal))
                                 // Version 4 and 4.5
                                 AppendDotNetFourFrameworkVersions(frameworks, versionKey);
                             else
@@ -591,6 +611,8 @@ namespace NUnit.Engine
             foreach (string profile in new string[] { "Full", "Client" })
             {
                 var profileKey = versionKey.OpenSubKey(profile);
+                if (profileKey == null) continue;
+                
                 if (CheckInstallDword(profileKey))
                 {
                     var framework = new RuntimeFramework(RuntimeType.Net, new Version(4, 0));
@@ -610,7 +632,7 @@ namespace NUnit.Engine
 
         private static bool CheckInstallDword(RegistryKey key)
         {
-            return (int)key.GetValue("Install", 0) == 1;
+            return ((int)key.GetValue("Install", 0) == 1);
         }
         
         #endregion

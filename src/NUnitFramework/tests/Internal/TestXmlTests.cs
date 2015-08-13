@@ -45,13 +45,11 @@ namespace NUnit.Framework.Internal
                 Is.EqualTo("GenericMethod"));
             Assert.That(new ParameterizedMethodSuite(typeof(DummyFixture).GetMethod("ParameterizedMethod")).TestType,
                 Is.EqualTo("ParameterizedMethod"));
-#if !NUNITLITE
             Assert.That(new ParameterizedFixtureSuite(typeof(DummyFixture)).TestType,
                 Is.EqualTo("ParameterizedFixture"));
             Type genericType = typeof(DummyGenericFixture<int>).GetGenericTypeDefinition();
             Assert.That(new ParameterizedFixtureSuite(genericType).TestType,
                 Is.EqualTo("GenericFixture"));
-#endif
         }
 
         [Test]
@@ -88,11 +86,11 @@ namespace NUnit.Framework.Internal
 
         private void CheckXmlForTest(Test test, bool recursive)
         {
-            XmlNode topNode = test.ToXml(true);
+            TNode topNode = test.ToXml(true);
             CheckXmlForTest(test, topNode, recursive);
         }
 
-        private void CheckXmlForTest(Test test, XmlNode topNode, bool recursive)
+        private void CheckXmlForTest(Test test, TNode topNode, bool recursive)
         {
             Assert.NotNull(topNode);
 
@@ -110,6 +108,16 @@ namespace NUnit.Framework.Internal
             Assert.That(topNode.Attributes["id"], Is.EqualTo(test.Id.ToString()));
             Assert.That(topNode.Attributes["name"], Is.EqualTo(test.Name));
             Assert.That(topNode.Attributes["fullname"], Is.EqualTo(test.FullName));
+            if (test.FixtureType != null)
+            {
+                Assert.NotNull(test.ClassName);
+                Assert.That(topNode.Attributes["classname"], Is.EqualTo(test.ClassName));
+            }
+            if (test is TestMethod)
+            {
+                Assert.NotNull(test.MethodName);
+                Assert.That(topNode.Attributes["methodname"], Is.EqualTo(test.MethodName));
+            }
             Assert.That(topNode.Attributes["runstate"], Is.EqualTo(test.RunState.ToString()));
 
             if (test.Properties.Keys.Count > 0)
@@ -119,11 +127,11 @@ namespace NUnit.Framework.Internal
                     foreach (object value in test.Properties[key])
                         expectedProps.Add(key + "=" + value.ToString());
 
-                XmlNode propsNode = topNode.FindDescendant("properties");
+                TNode propsNode = topNode.SelectSingleNode("properties");
                 Assert.NotNull(propsNode);
 
                 var actualProps = new List<string>();
-                foreach (XmlNode node in propsNode.ChildNodes)
+                foreach (TNode node in propsNode.ChildNodes)
                 {
                     string name = node.Attributes["name"];
                     string value = node.Attributes["value"];
@@ -141,7 +149,7 @@ namespace NUnit.Framework.Internal
                     foreach (Test child in suite.Tests)
                     {
                         string xpathQuery = string.Format("{0}[@id={1}]", child.XmlElementName, child.Id);
-                        XmlNode childNode = topNode.FindDescendant(xpathQuery);
+                        TNode childNode = topNode.SelectSingleNode(xpathQuery);
                         Assert.NotNull(childNode, "Expected node for test with ID={0}, Name={1}", child.Id, child.Name);
 
                         CheckXmlForTest(child, childNode, recursive);
@@ -159,10 +167,8 @@ namespace NUnit.Framework.Internal
             public void GenericMethod<T>(T x) { }
         }
 
-#if !NUNITLITE
         public class DummyGenericFixture<T>
         {
         }
-#endif
     }
 }

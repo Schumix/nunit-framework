@@ -24,12 +24,16 @@
 using System;
 using System.Reflection;
 using System.Collections.Generic;
+using NUnit.Framework.Interfaces;
 
 namespace NUnit.Framework.Internal.Execution
 {
     using Commands;
     using Interfaces;
 
+    /// <summary>
+    /// A utility class to create TestCommands
+    /// </summary>
     public static class CommandBuilder
     {
         /// <summary>
@@ -41,7 +45,7 @@ namespace NUnit.Framework.Internal.Execution
         {
             // Handle skipped tests
             if (suite.RunState != RunState.Runnable && suite.RunState != RunState.Explicit)
-                return new SkipCommand(suite);
+                return MakeSkipCommand(suite);
 
             // Build the OneTimeSetUpCommand itself
             TestCommand command = new OneTimeSetUpCommand(suite, setUpTearDown, actions);
@@ -80,11 +84,12 @@ namespace NUnit.Framework.Internal.Execution
         /// <returns></returns>
         public static TestCommand MakeTestCommand(TestMethod test)
         {
-            if (test.RunState != RunState.Runnable && test.RunState != RunState.Explicit)
-                return new SkipCommand(test);
-
             // Command to execute test
             TestCommand command = new TestMethodCommand(test);
+
+            // Add any wrappers to the TestMethodCommand
+            foreach (IWrapTestMethod wrapper in test.Method.GetCustomAttributes(typeof(IWrapTestMethod), true))
+                command = wrapper.Wrap(command);
 
             // Wrap in TestActionCommand
             command = new TestActionCommand(command);
@@ -92,9 +97,9 @@ namespace NUnit.Framework.Internal.Execution
             // Wrap in SetUpTearDownCommand
             command = new SetUpTearDownCommand(command);
 
-            // Add commands from Decorators supplied by attributes
-            foreach (ICommandDecorator decorator in test.Method.GetCustomAttributes(typeof(ICommandDecorator), true))
-                command = decorator.Decorate(command);
+            // Add wrappers that apply before setup and after teardown
+            foreach (ICommandWrapper decorator in test.Method.GetCustomAttributes(typeof(IWrapSetUpTearDown), true))
+                command = decorator.Wrap(command);
 
             // Add command to set up context using attributes that implement IApplyToContext
             IApplyToContext[] changes = (IApplyToContext[])test.Method.GetCustomAttributes(typeof(IApplyToContext), true);
@@ -104,6 +109,22 @@ namespace NUnit.Framework.Internal.Execution
             return command;
         }
 
+        /// <summary>
+        /// Creates a command for skipping a test. The result returned will
+        /// depend on the test RunState.
+        /// </summary>
+        public static SkipCommand MakeSkipCommand(Test test)
+        {
+            return new SkipCommand(test);
+        }
+
+        /// <summary>
+        /// Builds the set up tear down list.
+        /// </summary>
+        /// <param name="fixtureType">Type of the fixture.</param>
+        /// <param name="setUpType">Type of the set up.</param>
+        /// <param name="tearDownType">Type of the tear down.</param>
+        /// <returns>A list of SetUpTearDownItems</returns>
         public static List<SetUpTearDownItem> BuildSetUpTearDownList(Type fixtureType, Type setUpType, Type tearDownType)
         {
             var setUpMethods = Reflect.GetMethodsWithAttribute(fixtureType, setUpType, true);

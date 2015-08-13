@@ -25,6 +25,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using NUnit.Common;
 using NUnit.Framework.Interfaces;
 using NUnit.Framework.Internal;
 using NUnit.Framework.Internal.Builders;
@@ -40,10 +41,6 @@ namespace NUnit.Framework.Api
         static Logger log = InternalTrace.GetLogger(typeof(DefaultTestAssemblyBuilder));
 
         #region Instance Fields
-        /// <summary>
-        /// The loaded assembly
-        /// </summary>
-        Assembly assembly;
 
         /// <summary>
         /// The default suite builder used by the test assembly builder.
@@ -76,10 +73,16 @@ namespace NUnit.Framework.Api
         /// </returns>
         public ITest Build(Assembly assembly, IDictionary options)
         {
+#if PORTABLE
+            log.Debug("Loading {0}", assembly.FullName);
+#else
             log.Debug("Loading {0} in AppDomain {1}", assembly.FullName, AppDomain.CurrentDomain.FriendlyName);
+#endif
 
-#if NETCF || SILVERLIGHT
+#if SILVERLIGHT
             string assemblyPath = AssemblyHelper.GetAssemblyName(assembly).Name;
+#elif PORTABLE
+            string assemblyPath = AssemblyHelper.GetAssemblyName(assembly).FullName;
 #else
             string assemblyPath = AssemblyHelper.GetAssemblyPath(assembly);
 #endif
@@ -97,13 +100,17 @@ namespace NUnit.Framework.Api
         /// </returns>
         public ITest Build(string assemblyName, IDictionary options)
         {
+#if PORTABLE
+            log.Debug("Loading {0}", assemblyName);
+#else
             log.Debug("Loading {0} in AppDomain {1}", assemblyName, AppDomain.CurrentDomain.FriendlyName);
+#endif
 
             TestSuite testAssembly = null;
 
             try
             {
-                var assembly = Load(assemblyName);
+                var assembly = AssemblyHelper.Load(assemblyName);
                 testAssembly = Build(assembly, assemblyName, options);
             }
             catch(Exception ex)
@@ -118,12 +125,11 @@ namespace NUnit.Framework.Api
 
         private TestSuite Build(Assembly assembly, string assemblyPath, IDictionary options)
         {
-            this.assembly = assembly;
             TestSuite testAssembly = null;
 
             try
             {
-                IList fixtureNames = options[DriverSettings.LOAD] as IList;
+                IList fixtureNames = options[PackageSettings.LOAD] as IList;
                 IList fixtures = GetFixtures(assembly, fixtureNames);
 
                 testAssembly = BuildTestAssembly(assembly, assemblyPath, fixtures);
@@ -142,25 +148,6 @@ namespace NUnit.Framework.Api
 
         #region Helper Methods
 
-        private Assembly Load(string path)
-        {
-#if NETCF || SILVERLIGHT 
-            return Assembly.Load(path);
-#else
-            Assembly assembly = null;
-
-            // Throws if this isn't a managed assembly or if it was built
-            // with a later version of the same assembly. 
-            AssemblyName assemblyName = AssemblyName.GetAssemblyName(path);
-
-            assembly = Assembly.Load(assemblyName);
-
-            log.Info("Loaded assembly " + assembly.FullName);
-
-            return assembly;
-#endif
-        }
-
         private IList GetFixtures(Assembly assembly, IList names)
         {
             var fixtures = new List<Test>();
@@ -176,11 +163,18 @@ namespace NUnit.Framework.Api
             int testcases = 0;
             foreach (Type testType in testTypes)
             {
-                if (_defaultSuiteBuilder.CanBuildFrom(testType))
+                try
                 {
-                    Test fixture = _defaultSuiteBuilder.BuildFrom(testType);
-                    fixtures.Add(fixture);
-                    testcases += fixture.TestCaseCount;
+                    if (_defaultSuiteBuilder.CanBuildFrom(testType))
+                    {
+                        Test fixture = _defaultSuiteBuilder.BuildFrom(testType);
+                        fixtures.Add(fixture);
+                        testcases += fixture.TestCaseCount;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    log.Error(ex.ToString());
                 }
             }
 
@@ -239,11 +233,12 @@ namespace NUnit.Framework.Api
 
             testAssembly.ApplyAttributesToTest(assembly);
 
+#if !PORTABLE
 #if !SILVERLIGHT
             testAssembly.Properties.Set(PropertyNames.ProcessID, System.Diagnostics.Process.GetCurrentProcess().Id);
 #endif
             testAssembly.Properties.Set(PropertyNames.AppDomain, AppDomain.CurrentDomain.FriendlyName);
-
+#endif
 
             // TODO: Make this an option? Add Option to sort assemblies as well?
             testAssembly.Sort();

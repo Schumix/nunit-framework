@@ -103,6 +103,7 @@ namespace NUnit.Framework.Attributes
                 Assert.That(test.RunState, Is.EqualTo(RunState.NotRunnable));
         }
 
+#if !PORTABLE
         [Test]
         public void TheoryAttribute_NoArgs_NoCases()
         {
@@ -120,6 +121,7 @@ namespace NUnit.Framework.Attributes
             foreach (var test in tests)
                 Assert.That(test.RunState, Is.EqualTo(RunState.Runnable));
         }
+#endif
 
         [Test]
         public void CombinatorialAttribute_NoArgs_NoCases()
@@ -175,9 +177,9 @@ namespace NUnit.Framework.Attributes
                 Assert.That(test.RunState, Is.EqualTo(RunState.Runnable));
         }
 
-        public void MethodWithoutArgs() { }
-        public void MethodWithIntArgs(int x, int y) { }
-        public void MethodWithIntValues(
+        public static void MethodWithoutArgs() { }
+        public static void MethodWithIntArgs(int x, int y) { }
+        public static void MethodWithIntValues(
             [Values(1, 2, 3)]int x,
             [Values(10, 20)]int y) { }
 

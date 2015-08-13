@@ -69,7 +69,7 @@ namespace NUnit.Framework.Internal.Execution
             if (suite != null)
                 return new CompositeWorkItem(suite, filter);
             else
-                return new SimpleWorkItem((TestMethod)test);
+                return new SimpleWorkItem((TestMethod)test, filter);
         }
 
         #endregion
@@ -153,7 +153,7 @@ namespace NUnit.Framework.Internal.Execution
             get { return _actions;  }
         }
 
-#if !NUNITLITE
+#if PARALLEL
         /// <summary>
         /// Indicates whether this WorkItem may be run in parallel
         /// </summary>
@@ -200,7 +200,7 @@ namespace NUnit.Framework.Internal.Execution
         /// </summary>
         public TestResult Result { get; protected set; }
 
-#if !SILVERLIGHT && !NETCF
+#if !SILVERLIGHT && !NETCF && !PORTABLE
         internal ApartmentState TargetApartment
         {
             get 
@@ -222,10 +222,6 @@ namespace NUnit.Framework.Internal.Execution
         /// </summary>
         public virtual void Execute()
         {
-            
-#if NETCF
-            RunTest();
-#else
             // Timeout set at a higher level
             int timeout = _context.TestCaseTimeout;
 
@@ -233,12 +229,13 @@ namespace NUnit.Framework.Internal.Execution
             if (Test.Properties.ContainsKey(PropertyNames.Timeout))
                 timeout = (int)Test.Properties.Get(PropertyNames.Timeout);
             
-#if SILVERLIGHT
+#if SILVERLIGHT || NETCF
             if (Test.RequiresThread || Test is TestMethod && timeout > 0)
                 RunTestOnOwnThread(timeout);
             else
                 RunTest();
-
+#elif PORTABLE
+            RunTest();
 #else
             ApartmentState currentApartment = Thread.CurrentThread.GetApartmentState();
 
@@ -247,10 +244,9 @@ namespace NUnit.Framework.Internal.Execution
             else
                 RunTest();
 #endif
-#endif
         }
 
-#if SILVERLIGHT
+#if SILVERLIGHT || NETCF
         private void RunTestOnOwnThread(int timeout)
         {
             string reason = Test.RequiresThread ? "has RequiresThreadAttribute." : "has Timeout value set.";
@@ -258,8 +254,10 @@ namespace NUnit.Framework.Internal.Execution
 
             Thread thread = new Thread(RunTest);
 
+#if !NETCF
             thread.CurrentCulture = Context.CurrentCulture;
             thread.CurrentUICulture = Context.CurrentUICulture;
+#endif
 
             thread.Start();
 
@@ -268,9 +266,14 @@ namespace NUnit.Framework.Internal.Execution
                 if (timeout <= 0)
                     timeout = Timeout.Infinite;
 
-                thread.Join(timeout);
+                // Previous code:
+                // thread.Join(timeout);
+                //
+                // if (thread.IsAlive)
+                // Was this here for a reason?
+                // Is there some platform that needs it?
 
-                if (thread.IsAlive)
+                if (!thread.Join(timeout))
                 {
                     ThreadUtility.Kill(thread);
 
@@ -293,7 +296,7 @@ namespace NUnit.Framework.Internal.Execution
 #endif
 
 
-#if !SILVERLIGHT && !NETCF
+#if !SILVERLIGHT && !NETCF && !PORTABLE
         private void RunTestOnOwnThread(int timeout, ApartmentState apartment)
         {
             string reason = Test.RequiresThread
@@ -349,13 +352,13 @@ namespace NUnit.Framework.Internal.Execution
             _context.CurrentResult = this.Result;
             _context.Listener.TestStarted(this.Test);
             _context.StartTime = DateTime.UtcNow;
-#if !NETCF && !SILVERLIGHT
             _context.StartTicks = Stopwatch.GetTimestamp();
-#endif
             _context.EstablishExecutionEnvironment();
 
             _state = WorkItemState.Running;
-
+#if PORTABLE
+            PerformWork();
+#else
             try
             {
                 PerformWork();
@@ -364,6 +367,7 @@ namespace NUnit.Framework.Internal.Execution
             {
                 //Result.SetResult(ResultState.Cancelled);
             }
+#endif
         }
 
         #endregion
@@ -386,13 +390,9 @@ namespace NUnit.Framework.Internal.Execution
             Result.StartTime = Context.StartTime;
             Result.EndTime = DateTime.UtcNow;
             
-#if !NETCF && !SILVERLIGHT
             long tickCount = Stopwatch.GetTimestamp() - Context.StartTicks;
             double seconds = (double)tickCount / Stopwatch.Frequency;
-            Result.Duration = TimeSpan.FromSeconds(seconds);
-#else
-            Result.Duration = DateTime.UtcNow - Context.StartTime;
-#endif
+            Result.Duration = seconds;
 
             // We add in the assert count from the context. If
             // this item is for a test case, we are adding the

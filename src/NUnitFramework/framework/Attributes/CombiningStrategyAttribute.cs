@@ -1,5 +1,5 @@
-﻿// ***********************************************************************
-// Copyright (c) 2014 Charlie Poole
+// ***********************************************************************
+// Copyright (c) 2014-2015 Charlie Poole
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -8,10 +8,10 @@
 // distribute, sublicense, and/or sell copies of the Software, and to
 // permit persons to whom the Software is furnished to do so, subject to
 // the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be
 // included in all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -25,6 +25,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+#if NETCF
+using System.Linq;
+#endif
 
 namespace NUnit.Framework
 {
@@ -34,11 +37,11 @@ namespace NUnit.Framework
 
     /// <summary>
     /// Marks a test to use a particular CombiningStrategy to join
-    /// any parameter data provided. Since this is the default, the 
+    /// any parameter data provided. Since this is the default, the
     /// attribute is optional.
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
-    public abstract class CombiningStrategyAttribute : TestCaseBuilderAttribute, ITestBuilder, IApplyToTest
+    public abstract class CombiningStrategyAttribute : NUnitAttribute, ITestBuilder, IApplyToTest
     {
         private NUnitTestCaseBuilder _builder = new NUnitTestCaseBuilder();
         private IParameterDataProvider _dataProvider = new ParameterDataProvider();
@@ -62,7 +65,9 @@ namespace NUnit.Framework
         /// </summary>
         /// <param name="strategy">Combining strategy to be used</param>
         protected CombiningStrategyAttribute(object strategy)
-            : this((ICombiningStrategy)strategy) { }
+            : this((ICombiningStrategy)strategy)
+        {
+        }
 
         #region ITestBuilder Members
 
@@ -75,18 +80,75 @@ namespace NUnit.Framework
         /// <returns>One or more TestMethods</returns>
         public IEnumerable<TestMethod> BuildFrom(MethodInfo method, Test suite)
         {
-            ParameterInfo[] parameters = method.GetParameters();
-
             List<TestMethod> tests = new List<TestMethod>();
+
+#if NETCF
+            if (method.ContainsGenericParameters)
+            {
+                var genericParams = method.GetGenericArguments();
+                var numGenericParams = genericParams.Length;
+
+                var o = new object();
+                var tryArgs = Enumerable.Repeat(o, numGenericParams).ToArray();
+                MethodInfo mi;
+
+                try
+                {
+                    // This fails if the generic method has constraints
+                    // that are not met by object.
+                    mi = method.MakeGenericMethodEx(tryArgs);
+                    if (mi == null)
+                        return tests;
+                }
+                catch
+                {
+                    return tests;
+                }
+
+                var par = mi.GetParameters();
+                if (par.Length == 0)
+                    return tests;
+
+                var sourceData = par.Select(p => _dataProvider.GetDataFor(p)).ToArray();
+                foreach (var parms in _strategy.GetTestCases(sourceData))
+                {
+                    mi = method.MakeGenericMethodEx(parms.Arguments);
+                    if (mi == null)
+                    {
+                        var tm = new TestMethod(method, suite);
+                        tm.RunState = RunState.NotRunnable;
+                        tm.Properties.Set(PropertyNames.SkipReason, "Incompatible arguments");
+                        tests.Add(tm);
+                    }
+                    else
+                        tests.Add(_builder.BuildTestMethod(mi, suite, (TestCaseParameters)parms));
+                }
+
+                return tests;
+            }
+#endif
+            ParameterInfo[] parameters = method.GetParameters();
 
             if (parameters.Length > 0)
             {
                 IEnumerable[] sources = new IEnumerable[parameters.Length];
-                for (int i = 0; i < parameters.Length; i++)
-                    sources[i] = _dataProvider.GetDataFor(parameters[i]);
+
+                try
+                {
+                    for (int i = 0; i < parameters.Length; i++)
+                        sources[i] = _dataProvider.GetDataFor(parameters[i]);
+                }
+                catch (InvalidDataSourceException ex)
+                {
+                    var parms = new TestCaseParameters();
+                    parms.RunState = RunState.NotRunnable;
+                    parms.Properties.Set(PropertyNames.SkipReason, ex.Message);
+                    tests.Add(_builder.BuildTestMethod(method, suite, parms));
+                    return tests;
+                }
 
                 foreach (var parms in _strategy.GetTestCases(sources))
-                    tests.Add(_builder.BuildTestMethod(method, suite, (ParameterSet)parms));
+                    tests.Add(_builder.BuildTestMethod(method, suite, (TestCaseParameters)parms));
             }
 
             return tests;

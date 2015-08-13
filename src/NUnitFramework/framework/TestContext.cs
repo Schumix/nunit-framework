@@ -70,7 +70,7 @@ namespace NUnit.Framework
         /// </summary>
         public static TextWriter Out
         {
-            get { return TestExecutionContext.CurrentContext.CurrentResult.OutWriter; }
+            get { return TestExecutionContext.CurrentContext.OutWriter; }
         }
 
         /// <summary>
@@ -89,7 +89,7 @@ namespace NUnit.Framework
             get { return _result ?? (_result = new ResultAdapter(_testExecutionContext.CurrentResult)); }
         }
 
-#if !NETCF && !SILVERLIGHT
+#if !SILVERLIGHT && !PORTABLE
         /// <summary>
         /// Gets the directory containing the current test assembly.
         /// </summary>
@@ -100,7 +100,7 @@ namespace NUnit.Framework
 #endif
 
         /// <summary>
-        /// Gets the directory to be used for outputing files created
+        /// Gets the directory to be used for outputting files created
         /// by this test run.
         /// </summary>
         public string WorkDirectory
@@ -114,7 +114,7 @@ namespace NUnit.Framework
         /// <value>
         /// The random generator.
         /// </value>
-        public RandomGenerator Random
+        public Randomizer Random
         {
             get { return _testExecutionContext.RandomGenerator; }
         }
@@ -256,7 +256,7 @@ namespace NUnit.Framework
             /// <summary>
             /// Gets the unique Id of a test
             /// </summary>
-            public int ID
+            public String ID
             {
                 get { return _test.Id; }
             }
@@ -289,6 +289,14 @@ namespace NUnit.Framework
             public string FullName
             {
                 get { return _test.FullName; }
+            }
+
+            /// <summary>
+            /// The ClassName of the test
+            /// </summary>
+            public string ClassName
+            {
+                get { return _test.ClassName;  }
             }
 
             /// <summary>

@@ -22,11 +22,10 @@
 // ***********************************************************************
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.Reflection;
 using System.Xml;
+using NUnit.Common;
 using NUnit.Engine.Internal;
 
 namespace NUnit.Engine.Runners
@@ -34,10 +33,6 @@ namespace NUnit.Engine.Runners
     public class MasterTestRunner : AbstractTestRunner, ITestRunner
     {
         private ITestEngineRunner _realRunner;
-
-        // Count of assemblies and projects passed in package
-        private int _assemblyCount;
-        private int _projectCount;
 
         public MasterTestRunner(ServiceContext services, TestPackage package) : base(services, package) { }
 
@@ -49,7 +44,7 @@ namespace NUnit.Engine.Runners
         /// Explore a loaded TestPackage and return information about
         /// the tests found.
         /// </summary>
-        /// <param name="package">The TestPackage to be explored</param>
+        /// <param name="filter">A TestFilter used to select tests</param>
         /// <returns>A TestEngineResult.</returns>
         protected override TestEngineResult ExploreTests(TestFilter filter)
         {
@@ -59,11 +54,15 @@ namespace NUnit.Engine.Runners
         /// <summary>
         /// Load a TestPackage for possible execution
         /// </summary>
-        /// <param name="package">The TestPackage to be loaded</param>
         /// <returns>A TestEngineResult.</returns>
         protected override TestEngineResult LoadPackage()
         {
-            PerformPackageSetup(TestPackage);
+            // Last chance to catch invalid settings in package, 
+            // in case the client runner missed them.
+            ValidatePackageSettings();
+
+            _realRunner = TestRunnerFactory.MakeTestRunner(TestPackage);
+
             return _realRunner.Load().Aggregate(TEST_RUN_ELEMENT, TestPackage.Name, TestPackage.FullName);
         }
 
@@ -130,6 +129,20 @@ namespace NUnit.Engine.Runners
             _realRunner.StopRun(force);
         }
 
+        /// <summary>
+        /// Dispose of this object.
+        /// </summary>
+        protected override void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                base.Dispose(disposing);
+
+                if (disposing && _realRunner != null)
+                    _realRunner.Dispose();
+            }
+        }
+
         #endregion
 
         #region ITestRunner Explicit Implementation
@@ -141,14 +154,13 @@ namespace NUnit.Engine.Runners
 
         /// <summary>
         /// Load a TestPackage for possible execution. The 
-        /// explicit implemenation returns an ITestEngineResult
+        /// explicit implementation returns an ITestEngineResult
         /// for consumption by clients.
         /// </summary>
-        /// <param name="package">The TestPackage to be loaded</param>
         /// <returns>An XmlNode representing the loaded assembly.</returns>
         XmlNode ITestRunner.Load()
         {
-            return this.Load().Xml;
+            return Load().Xml;
         }
 
         /// <summary>
@@ -158,7 +170,7 @@ namespace NUnit.Engine.Runners
         /// <exception cref="InvalidOperationException">If no package has been loaded</exception>
         XmlNode ITestRunner.Reload()
         {
-            return this.Reload().Xml;
+            return Reload().Xml;
         }
 
         /// <summary>
@@ -171,13 +183,16 @@ namespace NUnit.Engine.Runners
         /// <returns>An XmlNode giving the result of the test execution</returns>
         XmlNode ITestRunner.Run(ITestEventListener listener, TestFilter filter)
         {
-            return this.Run(listener, filter).Xml;
+            return Run(listener, filter).Xml;
         }
 
         /// <summary>
-        /// 
+        /// Start a run of the tests in the loaded TestPackage. The tests are run
+        /// asynchronously and the listener interface is notified as it progresses.
         /// </summary>
-        /// <param name="filter"></param>
+        /// <param name="listener">The listener that is notified as the run progresses</param>
+        /// <param name="filter">A TestFilter used to select tests</param>
+        /// <returns></returns>
         ITestRun ITestRunner.RunAsync(ITestEventListener listener, TestFilter filter)
         {
             var testRun = new TestRun(this);
@@ -189,7 +204,7 @@ namespace NUnit.Engine.Runners
         /// Explore a loaded TestPackage and return information about
         /// the tests found.
         /// </summary>
-        /// <param name="package">The TestPackage to be explored</param>
+        /// <param name="filter">A TestFilter used to select tests</param>
         /// <returns>An XmlNode representing the tests found.</returns>
         XmlNode ITestRunner.Explore(TestFilter filter)
         {
@@ -198,62 +213,31 @@ namespace NUnit.Engine.Runners
 
         #endregion
 
-        #region IDisposable Members
+        #region Helper Methods
 
-        /// <summary>
-        /// Dispose of this object.
-        /// </summary>
-        public override void Dispose()
+        // Any Errors thrown from this method indicate that the client
+        // runner is putting invalid values into the package.
+        private void ValidatePackageSettings()
         {
-            if (_realRunner != null)
-                _realRunner.Dispose();
-        }
-
-        #endregion
-
-        #region HelperMethods
-
-        private void PerformPackageSetup(TestPackage package)
-        {
-            this.TestPackage = package;
-
-            // Expand projects, updating the count of projects and assemblies
-            ExpandProjects();
-
-            // If there is more than one project or a mix of assemblies and 
-            // projects, AggregatingTestRunner will call MakeTestRunner for
-            // each project or assembly.
-            _realRunner = _projectCount > 1 || _projectCount > 0 && _assemblyCount > 0
-                ? new AggregatingTestRunner(Services, package)
-                : Services.TestRunnerFactory.MakeTestRunner(package);
-        }
-
-        private void ExpandProjects()
-        {
-            if (TestPackage.TestFiles.Length > 0)
+#if NUNIT_ENGINE
+            var frameworkSetting = TestPackage.GetSetting(PackageSettings.RuntimeFramework, "");
+            if (frameworkSetting.Length > 0)
             {
-                foreach (string testFile in TestPackage.TestFiles)
+                var runtimeService = Services.GetService<IRuntimeFrameworkService>();
+                if (!runtimeService.IsAvailable(frameworkSetting))
+                    throw new NUnitEngineException(string.Format("The requested framework {0} is unknown or not available.", frameworkSetting));
+
+                var processModel = TestPackage.GetSetting(PackageSettings.ProcessModel, "Default");
+                if (processModel.ToLower() == "single")
                 {
-                    TestPackage subPackage = new TestPackage(testFile);
-                    if (Services.ProjectService.IsProjectFile(testFile))
-                    {
-                        Services.ProjectService.ExpandProjectPackage(subPackage);
-                        _projectCount++;
-                    }
-                    else
-                        _assemblyCount++;
+                    var currentFramework = RuntimeFramework.CurrentFramework;
+                    var requestedFramework = RuntimeFramework.Parse(frameworkSetting);
+                    if (!currentFramework.Supports(requestedFramework))
+                        throw new NUnitEngineException(string.Format(
+                            "Cannot run {0} framework in process already running {1}.", frameworkSetting, currentFramework));
                 }
             }
-            else
-            {
-                if (Services.ProjectService.IsProjectFile(TestPackage.FullName))
-                {
-                    Services.ProjectService.ExpandProjectPackage(TestPackage);
-                    _projectCount++;
-                }
-                else
-                    _assemblyCount++;
-            }
+#endif
         }
 
         #endregion

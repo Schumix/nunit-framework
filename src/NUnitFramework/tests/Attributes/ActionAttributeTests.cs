@@ -21,10 +21,13 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
 
+// TODO: Test uses features not available in Silverlight
+#if !SILVERLIGHT && !PORTABLE
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using NUnit.Common;
 using NUnit.Framework;
 using NUnit.Framework.Api;
 using NUnit.Framework.Interfaces;
@@ -34,6 +37,7 @@ using NUnit.TestData.ActionAttributeTests;
 namespace NUnit.Framework.Tests
 {
     [TestFixture]
+    [Parallelizable(ParallelScope.None)]
     public class ActionAttributeTests
     {
         // NOTE: An earlier version of this fixture attempted to test
@@ -42,13 +46,8 @@ namespace NUnit.Framework.Tests
         // different runtimes, so we now look only at the relative position
         // of before and after actions with respect to the test.
 
-#if NETCF
-        private static readonly string ASSEMBLY_NAME = "nunitlite.testdata";
-        private static readonly string ASSEMBLY_PATH = "nunitlite.testdata";
-#else
         private static readonly string ASSEMBLY_PATH = AssemblyHelper.GetAssemblyPath(typeof(ActionAttributeFixture));
         private static readonly string ASSEMBLY_NAME = System.IO.Path.GetFileName(ASSEMBLY_PATH);
-#endif
 
         private ITestResult _result = null;
         private int _numEvents = -1;
@@ -56,11 +55,7 @@ namespace NUnit.Framework.Tests
         [OneTimeSetUp]
         public void Setup()
         {
-#if NUNITLITE
-            var runner = new NUnitLiteTestAssemblyRunner(new DefaultTestAssemblyBuilder());
-#else
             var runner = new NUnitTestAssemblyRunner(new DefaultTestAssemblyBuilder());
-#endif
 
             ActionAttributeFixture.ClearResults();
 
@@ -172,7 +167,7 @@ namespace NUnit.Framework.Tests
             CheckActionsOnTestCase(testName);
         }
 
-        #region Helper Methods
+#region Helper Methods
 
         private void CheckActionsOnSuite(string suiteName, int firstEvent, int lastEvent, params string[] tags)
         {
@@ -219,9 +214,9 @@ namespace NUnit.Framework.Tests
             Assert.That(event2, Does.EndWith(target1), "Event mismatch");
         }
 
-        #endregion
+#endregion
 
-        #region Expected Attributes and Events
+#region Expected Attributes and Events
 
         private static readonly string[] ExpectedAssemblyActions = new string[] { 
                         "OnAssembly", "OnAssembly", "OnAssembly" };
@@ -418,6 +413,7 @@ namespace NUnit.Framework.Tests
         private static readonly int NumSetUpFixtureActions = ExpectedSetUpFixtureActions.Length;
         private static readonly int NumAssemblyActions = ExpectedAssemblyActions.Length;
 
-        #endregion
+#endregion
     }
 }
+#endif

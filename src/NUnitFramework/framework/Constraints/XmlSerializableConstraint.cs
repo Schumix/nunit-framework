@@ -24,16 +24,13 @@
 #if !SILVERLIGHT
 using System;
 using System.IO;
-#if !NETCF
-using System.Runtime.Serialization;
-#endif
 using System.Xml.Serialization;
 
 namespace NUnit.Framework.Constraints
 {
     /// <summary>
-    /// BinarySerializableConstraint tests whether 
-    /// an object is serializable in binary format.
+    /// XmlSerializableConstraint tests whether 
+    /// an object is serializable in xml format.
     /// </summary>
     public class XmlSerializableConstraint : Constraint
     {

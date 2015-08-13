@@ -29,7 +29,7 @@ namespace NUnit.Framework
     /// Helper class with properties and methods that supply
     /// a number of constraints used in Asserts.
     /// </summary>
-    public class Does
+    public static class Does
     {
         #region Not
 
@@ -45,8 +45,8 @@ namespace NUnit.Framework
         #endregion
 
         #region Exist
-#if !NUNITLITE
 
+#if !SILVERLIGHT && !PORTABLE
         /// <summary>
         /// Returns a constraint that succeeds if the value
         /// is a file or directory and it exists.
@@ -55,8 +55,8 @@ namespace NUnit.Framework
         {
             get { return new FileOrDirectoryExistsConstraint(); }
         }
-
 #endif
+
         #endregion
 
         #region Contain
@@ -65,7 +65,7 @@ namespace NUnit.Framework
         /// Returns a new CollectionContainsConstraint checking for the
         /// presence of a particular object in the collection.
         /// </summary>
-        public CollectionContainsConstraint Contain(object expected)
+        public static CollectionContainsConstraint Contain(object expected)
         {
             return new CollectionContainsConstraint(expected);
         }
@@ -113,7 +113,6 @@ namespace NUnit.Framework
 
         #region Match
 
-#if !NETCF
         /// <summary>
         /// Returns a constraint that succeeds if the actual
         /// value matches the regular expression supplied as an argument.
@@ -122,7 +121,6 @@ namespace NUnit.Framework
         {
             return new RegexConstraint(pattern);
         }
-#endif
 
         #endregion
     }

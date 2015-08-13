@@ -21,7 +21,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
 
-#if !NUNITLITE
+#if !PORTABLE
 using System;
 using System.Collections;
 using System.Text;
@@ -90,6 +90,5 @@ namespace NUnit.Framework.Tests
         }
         #endregion
     }
-
 }
 #endif

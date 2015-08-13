@@ -159,7 +159,7 @@ namespace NUnit.Framework
 
         #region BinarySerializable
 
-#if !NETCF && !SILVERLIGHT
+#if !NETCF && !SILVERLIGHT && !PORTABLE
         /// <summary>
         /// Returns a constraint that tests whether an object graph is serializable in binary format.
         /// </summary>
@@ -213,7 +213,7 @@ namespace NUnit.Framework
 
         /// <summary>
         /// Returns a constraint that tests whether the
-        /// actual value is greater than the suppled argument
+        /// actual value is greater than the supplied argument
         /// </summary>
         public static GreaterThanConstraint GreaterThan(object expected)
         {
@@ -226,7 +226,7 @@ namespace NUnit.Framework
 
         /// <summary>
         /// Returns a constraint that tests whether the
-        /// actual value is greater than or equal to the suppled argument
+        /// actual value is greater than or equal to the supplied argument
         /// </summary>
         public static GreaterThanOrEqualConstraint GreaterThanOrEqualTo(object expected)
         {
@@ -235,7 +235,7 @@ namespace NUnit.Framework
 
         /// <summary>
         /// Returns a constraint that tests whether the
-        /// actual value is greater than or equal to the suppled argument
+        /// actual value is greater than or equal to the supplied argument
         /// </summary>
         public static GreaterThanOrEqualConstraint AtLeast(object expected)
         {
@@ -248,7 +248,7 @@ namespace NUnit.Framework
 
         /// <summary>
         /// Returns a constraint that tests whether the
-        /// actual value is less than the suppled argument
+        /// actual value is less than the supplied argument
         /// </summary>
         public static LessThanConstraint LessThan(object expected)
         {
@@ -261,7 +261,7 @@ namespace NUnit.Framework
 
         /// <summary>
         /// Returns a constraint that tests whether the
-        /// actual value is less than or equal to the suppled argument
+        /// actual value is less than or equal to the supplied argument
         /// </summary>
         public static LessThanOrEqualConstraint LessThanOrEqualTo(object expected)
         {
@@ -270,7 +270,7 @@ namespace NUnit.Framework
 
         /// <summary>
         /// Returns a constraint that tests whether the
-        /// actual value is less than or equal to the suppled argument
+        /// actual value is less than or equal to the supplied argument
         /// </summary>
         public static LessThanOrEqualConstraint AtMost(object expected)
         {
@@ -349,7 +349,7 @@ namespace NUnit.Framework
 
         /// <summary>
         /// Returns a constraint that tests whether the actual value
-        /// is assignable from the type supplied as an argument.
+        /// is assignable to the type supplied as an argument.
         /// </summary>
         public static AssignableToConstraint AssignableTo(Type expectedType)
         {
@@ -358,7 +358,7 @@ namespace NUnit.Framework
 
         /// <summary>
         /// Returns a constraint that tests whether the actual value
-        /// is assignable from the type supplied as an argument.
+        /// is assignable to the type supplied as an argument.
         /// </summary>
         public static AssignableToConstraint AssignableTo<TExpected>()
         {
@@ -390,6 +390,19 @@ namespace NUnit.Framework
         public static CollectionSubsetConstraint SubsetOf(IEnumerable expected)
         {
             return new CollectionSubsetConstraint(expected);
+        }
+
+        #endregion
+
+        #region SupersetOf
+
+        /// <summary>
+        /// Returns a constraint that tests whether the actual value
+        /// is a superset of the collection supplied as an argument.
+        /// </summary>
+        public static CollectionSupersetConstraint SupersetOf(IEnumerable expected)
+        {
+            return new CollectionSupersetConstraint(expected);
         }
 
         #endregion
@@ -450,7 +463,6 @@ namespace NUnit.Framework
 
         #region StringMatching
 
-#if !NETCF
         /// <summary>
         /// Returns a constraint that succeeds if the actual
         /// value matches the regular expression supplied as an argument.
@@ -460,10 +472,10 @@ namespace NUnit.Framework
         {
             return new RegexConstraint(pattern);
         }
-#endif
 
         #endregion
-
+        
+#if !PORTABLE
         #region SamePath
 
         /// <summary>
@@ -502,6 +514,7 @@ namespace NUnit.Framework
         }
 
         #endregion
+#endif
 
         #region InRange
 

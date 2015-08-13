@@ -21,9 +21,9 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
 
-#if NUNIT_ENGINE
+#if NUNIT_ENGINE || CORE_ENGINE
 namespace NUnit.Engine
-#elif NUNIT_FRAMEWORK || NUNITLITE
+#elif NUNIT_FRAMEWORK
 namespace NUnit.Framework.Internal
 #else
 namespace NUnit.Common

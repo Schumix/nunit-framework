@@ -57,7 +57,7 @@ namespace NUnit.TestUtilities
             object testObject = Activator.CreateInstance(type);
             ITestResult result = TestBuilder.RunTest(test, testObject);
             if (result.HasChildren) // In case it's a parameterized method
-                result = (ITestResult)result.Children[0];
+                result = result.Children[0];
             Assert.That(result.ResultState, Is.EqualTo(resultState));
         }
         #endregion
@@ -66,8 +66,9 @@ namespace NUnit.TestUtilities
         public static void IsNotRunnable(Test test)
         {
             Assert.AreEqual(RunState.NotRunnable, test.RunState);
-            ITestResult result = TestBuilder.RunTest(test, null);
-            Assert.AreEqual(ResultState.NotRunnable, result.ResultState);
+            //ITestResult result = TestBuilder.RunTest(test, null);
+            //Assert.AreEqual(TestStatus.Failed, result.ResultState.Status);
+            //Assert.AreEqual("Invalid", result.ResultState.Label);
         }
 
         public static void IsNotRunnable(Type type)

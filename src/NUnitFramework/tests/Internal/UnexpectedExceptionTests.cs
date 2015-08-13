@@ -21,7 +21,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
 
-#if !NUNITLITE
 using System;
 using NUnit.Framework.Interfaces;
 using NUnit.TestData.UnexpectedExceptionFixture;
@@ -62,7 +61,7 @@ namespace NUnit.Framework.Internal
             Assert.AreEqual(expectedMessage, result.Message);
         }
 
-#if !NET_2_0 && !NET_3_5
+#if NET_4_0 || NET_4_5 || SILVERLIGHT || PORTABLE
         [Test]
         public void FailRecordsInnerExceptionsAsPartOfAggregateException()
         {
@@ -120,4 +119,3 @@ namespace NUnit.Framework.Internal
         }
     }
 }
-#endif

@@ -48,13 +48,13 @@ namespace NUnit.Framework.Attributes
         }
 
         [Test]
-        public void MakeSureSetUpAndTearDownAreCalledOnExplicitFixture()
+        public void MakeSureSetUpAndTearDownAreNotCalledOnExplicitFixture()
         {
             ExplicitSetUpAndTearDownFixture fixture = new ExplicitSetUpAndTearDownFixture();
             TestBuilder.RunTestFixture(fixture);
 
-            Assert.AreEqual(1, fixture.setUpCount, "SetUp");
-            Assert.AreEqual(1, fixture.tearDownCount, "TearDown");
+            Assert.AreEqual(0, fixture.setUpCount, "SetUp");
+            Assert.AreEqual(0, fixture.tearDownCount, "TearDown");
         }
 
         [Test]
@@ -156,7 +156,7 @@ namespace NUnit.Framework.Attributes
             ITestResult result = TestBuilder.RunTestFixture(fixture);
 
             Assert.AreEqual( 1, fixture.setUpCount, "setUpCount" );
-            Assert.AreEqual( 1, fixture.tearDownCount, "tearDownCOunt" );
+            Assert.AreEqual( 1, fixture.tearDownCount, "tearDownCount" );
 
             Assert.AreEqual(ResultState.SetUpError, result.ResultState);
             Assert.AreEqual("System.Exception : This was thrown from fixture setup", result.Message, "TestSuite Message");
@@ -180,7 +180,7 @@ namespace NUnit.Framework.Attributes
             result = TestBuilder.RunTestFixture(fixture);
 
             Assert.AreEqual( 1, fixture.setUpCount, "setUpCount" );
-            Assert.AreEqual( 1, fixture.tearDownCount, "tearDownCOunt" );
+            Assert.AreEqual( 1, fixture.tearDownCount, "tearDownCount" );
 
             Assert.AreEqual(ResultState.Success, result.ResultState);
         }
@@ -210,7 +210,7 @@ namespace NUnit.Framework.Attributes
             Assert.AreEqual(ResultState.TearDownError, result.ResultState);
 
             Assert.AreEqual(1, fixture.setUpCount, "setUpCount");
-            Assert.AreEqual(1, fixture.tearDownCount, "tearDownCOunt");
+            Assert.AreEqual(1, fixture.tearDownCount, "tearDownCount");
 
             Assert.AreEqual("TearDown : System.Exception : This was thrown from fixture teardown", result.Message);
             Assert.That(result.StackTrace, Does.Contain("--TearDown"));
@@ -227,9 +227,10 @@ namespace NUnit.Framework.Attributes
             Assert.AreEqual(ResultState.TearDownError, result.ResultState);
 
             Assert.AreEqual(1, fixture.setUpCount, "setUpCount");
-            Assert.AreEqual(1, fixture.tearDownCount, "tearDownCOunt");
+            Assert.AreEqual(1, fixture.tearDownCount, "tearDownCount");
 
-            Assert.AreEqual("One or more child tests had errors" + Env.NewLine + "TearDown : System.Exception : This was thrown from fixture teardown", result.Message);
+            Assert.AreEqual(TestResult.CHILD_ERRORS_MESSAGE + Env.NewLine + "TearDown : System.Exception : This was thrown from fixture teardown", result.Message);
+            Assert.That(result.ResultState.Site, Is.EqualTo(FailureSite.TearDown));
             Assert.That(result.StackTrace, Does.Contain("--TearDown"));
         }
 
@@ -244,7 +245,7 @@ namespace NUnit.Framework.Attributes
             Assert.AreEqual(ResultState.TearDownError, result.ResultState);
 
             Assert.AreEqual(1, fixture.setUpCount, "setUpCount");
-            Assert.AreEqual(1, fixture.tearDownCount, "tearDownCOunt");
+            Assert.AreEqual(1, fixture.tearDownCount, "tearDownCount");
 
             Assert.AreEqual("System.Exception : This was thrown from fixture setup" + Env.NewLine + 
                 "TearDown : System.Exception : This was thrown from fixture teardown", result.Message);
@@ -276,7 +277,7 @@ namespace NUnit.Framework.Attributes
             result = TestBuilder.RunTestFixture(fixture);
 
             Assert.AreEqual( 1, fixture.setUpCount, "setUpCount" );
-            Assert.AreEqual( 1, fixture.tearDownCount, "tearDownCOunt" );
+            Assert.AreEqual( 1, fixture.tearDownCount, "tearDownCount" );
         }
 
         [Test]
@@ -345,7 +346,7 @@ namespace NUnit.Framework.Attributes
         }
     }
 
-#if !SILVERLIGHT && !NETCF
+#if !SILVERLIGHT && !NETCF && !PORTABLE
     [TestFixture]
     class ChangesMadeInFixtureSetUp
     {

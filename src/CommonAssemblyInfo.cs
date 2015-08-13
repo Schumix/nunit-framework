@@ -36,10 +36,10 @@ using System.Reflection;
 [assembly: AssemblyConfiguration(".NET 4.5 Debug")]
 #elif NET_4_0
 [assembly: AssemblyConfiguration(".NET 4.0 Debug")]
-#elif NET_3_5
-[assembly: AssemblyConfiguration(".NET 3.5 Debug")]
 #elif NET_2_0
 [assembly: AssemblyConfiguration(".NET 2.0 Debug")]
+#elif SL_5_0 && PORTABLE
+[assembly: AssemblyConfiguration("Silverlight 5.0 Debug using Portable Framework")]
 #elif SL_5_0
 [assembly: AssemblyConfiguration("Silverlight 5.0 Debug")]
 #elif SL_4_0
@@ -48,6 +48,8 @@ using System.Reflection;
 [assembly: AssemblyConfiguration("Silverlight 3.0 Debug")]
 #elif NETCF_3_5
 [assembly: AssemblyConfiguration("Compact Framework 3.5 Debug")]
+#elif PORTABLE
+[assembly: AssemblyConfiguration("Portable Debug")]
 #else
 [assembly: AssemblyConfiguration("Debug")]
 #endif
@@ -56,10 +58,10 @@ using System.Reflection;
 [assembly: AssemblyConfiguration(".NET 4.5")]
 #elif NET_4_0
 [assembly: AssemblyConfiguration(".NET 4.0")]
-#elif NET_3_5
-[assembly: AssemblyConfiguration(".NET 3.5")]
 #elif NET_2_0
 [assembly: AssemblyConfiguration(".NET 2.0")]
+#elif SL_5_0 && PORTABLE
+[assembly: AssemblyConfiguration("Silverlight 5.0 using Portable Framework")]
 #elif SL_5_0
 [assembly: AssemblyConfiguration("Silverlight 5.0")]
 #elif SL_4_0
@@ -68,6 +70,8 @@ using System.Reflection;
 [assembly: AssemblyConfiguration("Silverlight 3.0")]
 #elif NETCF_3_5
 [assembly: AssemblyConfiguration("Compact Framework 3.5")]
+#elif PORTABLE
+[assembly: AssemblyConfiguration("Portable")]
 #else
 [assembly: AssemblyConfiguration("")]
 #endif

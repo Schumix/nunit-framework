@@ -53,7 +53,7 @@ namespace NUnit.Framework.Constraints
         private List<EqualityAdapter> externalComparers = new List<EqualityAdapter>();
 
         /// <summary>
-        /// List of points at which a failure occured.
+        /// List of points at which a failure occurred.
         /// </summary>
         private List<FailurePoint> failurePoints;
 
@@ -112,6 +112,17 @@ namespace NUnit.Framework.Constraints
         {
             get { return failurePoints; }
         }
+
+        /// <summary>
+        /// Flags the comparer to include <see cref="DateTimeOffset.Offset"/>
+        /// property in comparison of two <see cref="DateTimeOffset"/> values.
+        /// </summary>
+        /// <remarks>
+        /// Using this modifier does not allow to use the <see cref="Tolerance"/>
+        /// modifier.
+        /// </remarks>
+        public bool WithSameOffset { get; set; }
+
         #endregion
 
         #region Public Methods
@@ -134,6 +145,9 @@ namespace NUnit.Framework.Constraints
             Type xType = x.GetType();
             Type yType = y.GetType();
 
+            Type xGenericTypeDefinition = xType.IsGenericType ? xType.GetGenericTypeDefinition() : null;
+            Type yGenericTypeDefinition = yType.IsGenericType ? yType.GetGenericTypeDefinition() : null;
+
             EqualityAdapter externalComparer = GetExternalComparer(x, y);
             if (externalComparer != null)
                 return externalComparer.AreEqual(x, y);
@@ -149,8 +163,8 @@ namespace NUnit.Framework.Constraints
                 return DictionaryEntriesEqual((DictionaryEntry)x, (DictionaryEntry)y, ref tolerance);
 
             // IDictionary<,> will eventually try to compare it's key value pairs when using CollectionTally
-            if (xType.IsGenericType && xType.GetGenericTypeDefinition() == typeof(KeyValuePair<,>) &&
-                yType.IsGenericType && yType.GetGenericTypeDefinition() == typeof(KeyValuePair<,>))
+            if (xGenericTypeDefinition == typeof(KeyValuePair<,>) &&
+                yGenericTypeDefinition == typeof(KeyValuePair<,>))
             {
                 var keyTolerance = Tolerance.Exact;
                 object xKey = xType.GetProperty("Key").GetValue(x, null);
@@ -164,11 +178,11 @@ namespace NUnit.Framework.Constraints
             //if (x is ICollection && y is ICollection)
             //    return CollectionsEqual((ICollection)x, (ICollection)y, ref tolerance);
 
-            if (x is IEnumerable && y is IEnumerable && !(x is string && y is string))
-                return EnumerablesEqual((IEnumerable)x, (IEnumerable)y, ref tolerance);
-
             if (x is string && y is string)
                 return StringsEqual((string)x, (string)y);
+
+            if (x is IEnumerable && y is IEnumerable)
+                return EnumerablesEqual((IEnumerable)x, (IEnumerable)y, ref tolerance);
 
             if (x is Stream && y is Stream)
                 return StreamsEqual((Stream)x, (Stream)y);
@@ -176,11 +190,40 @@ namespace NUnit.Framework.Constraints
             if ( x is char && y is char )
                 return CharsEqual( (char)x, (char)y );
 
+#if !PORTABLE
             if (x is DirectoryInfo && y is DirectoryInfo)
                 return DirectoriesEqual((DirectoryInfo)x, (DirectoryInfo)y);
+#endif
 
             if (Numerics.IsNumericType(x) && Numerics.IsNumericType(y))
                 return Numerics.AreEqual(x, y, ref tolerance);
+
+#if !NETCF
+            if (x is DateTimeOffset && y is DateTimeOffset)
+            {
+                bool result;
+
+                DateTimeOffset xAsOffset = (DateTimeOffset)x;
+                DateTimeOffset yAsOffset = (DateTimeOffset)y;
+
+                if (tolerance != null && tolerance.Value is TimeSpan)
+                {
+                    TimeSpan amount = (TimeSpan)tolerance.Value;
+                    result = (xAsOffset - yAsOffset).Duration() <= amount;
+                }
+                else
+                {
+                    result = xAsOffset == yAsOffset;
+                }
+
+                if (result && WithSameOffset)
+                {
+                    result = xAsOffset.Offset == yAsOffset.Offset;
+                }
+
+                return result;
+            }
+#endif
 
             if (tolerance != null && tolerance.Value is TimeSpan)
             {
@@ -188,11 +231,6 @@ namespace NUnit.Framework.Constraints
 
                 if (x is DateTime && y is DateTime)
                     return ((DateTime)x - (DateTime)y).Duration() <= amount;
-
-#if !NETCF
-                if (x is DateTimeOffset && y is DateTimeOffset)
-                    return ((DateTimeOffset)x - (DateTimeOffset)y).Duration() <= amount;
-#endif
 
                 if (x is TimeSpan && y is TimeSpan)
                     return ((TimeSpan)x - (TimeSpan)y).Duration() <= amount;
@@ -369,6 +407,7 @@ namespace NUnit.Framework.Constraints
             }
         }
 
+#if !PORTABLE
         /// <summary>
         /// Method to compare two DirectoryInfo objects
         /// </summary>
@@ -388,6 +427,7 @@ namespace NUnit.Framework.Constraints
             // TODO: Find a cleaner way to do this
             return new SamePathConstraint(x.FullName).ApplyTo(y.FullName).IsSuccess;
         }
+#endif
 
         private bool StreamsEqual(Stream x, Stream y)
         {

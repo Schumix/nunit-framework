@@ -21,6 +21,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
 
+#if !PORTABLE
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -145,6 +146,20 @@ namespace NUnit.Framework.Internal
                             ? new Version(4, 0, 60310)
                             : new Version(2, 0, 50727);
                         break;
+
+                    case RuntimeType.NetCF:
+                        switch (version.Major)
+                        {
+                            case 3:
+                                switch (version.Minor)
+                                {
+                                    case 5:
+                                        this.ClrVersion = new Version(3, 5, 7283);
+                                        break;
+                                }
+                                break;
+                        }
+                        break;
                 }
         }
 
@@ -211,21 +226,23 @@ namespace NUnit.Framework.Internal
                     else /* It's windows */
                     if (major == 2)
                     {
-                        RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\.NETFramework");
-                        if (key != null)
+                        using (RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\.NETFramework"))
                         {
-                            string installRoot = key.GetValue("InstallRoot") as string;
-                            if (installRoot != null)
+                            if (key != null)
                             {
-                                if (Directory.Exists(Path.Combine(installRoot, "v3.5")))
+                                string installRoot = key.GetValue("InstallRoot") as string;
+                                if (installRoot != null)
                                 {
-                                    major = 3;
-                                    minor = 5;
-                                }
-                                else if (Directory.Exists(Path.Combine(installRoot, "v3.0")))
-                                {
-                                    major = 3;
-                                    minor = 0;
+                                    if (Directory.Exists(Path.Combine(installRoot, "v3.5")))
+                                    {
+                                        major = 3;
+                                        minor = 5;
+                                    }
+                                    else if (Directory.Exists(Path.Combine(installRoot, "v3.0")))
+                                    {
+                                        major = 3;
+                                        minor = 0;
+                                    }
                                 }
                             }
                         }
@@ -288,7 +305,7 @@ namespace NUnit.Framework.Internal
         /// <summary>
         /// Parses a string representing a RuntimeFramework.
         /// The string may be just a RuntimeType name or just
-        /// a Version or a hyphentated RuntimeType-Version or
+        /// a Version or a hyphenated RuntimeType-Version or
         /// a Version prefixed by 'versionString'.
         /// </summary>
         /// <param name="s"></param>
@@ -404,3 +421,4 @@ namespace NUnit.Framework.Internal
         #endregion
     }
 }
+#endif

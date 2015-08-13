@@ -8,10 +8,10 @@
 // distribute, sublicense, and/or sell copies of the Software, and to
 // permit persons to whom the Software is furnished to do so, subject to
 // the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be
 // included in all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -25,8 +25,7 @@ using System;
 using NUnit.Framework.Interfaces;
 using NUnit.TestData.OneTimeSetUpTearDownData;
 using NUnit.TestUtilities;
-using NUnit.TestData.TestFixtureData;
-using IgnoredFixture = NUnit.TestData.TestFixtureData.IgnoredFixture;
+using NUnit.TestData.TestFixtureTests;
 
 namespace NUnit.Framework.Internal
 {
@@ -36,11 +35,7 @@ namespace NUnit.Framework.Internal
     [TestFixture]
     public class TestFixtureTests
     {
-#if NUNITLITE
-        private static string dataAssembly = "nunitlite.testdata";
-#else
         private static string dataAssembly = "nunit.testdata";
-#endif
 
         private static void CanConstructFrom(Type fixtureType)
         {
@@ -76,28 +71,27 @@ namespace NUnit.Framework.Internal
         [Test]
         public void ConstructFromDoublyNestedType()
         {
-            CanConstructFrom(typeof(OuterClass.NestedTestFixture.DoublyNestedTestFixture),
-                "OuterClass+NestedTestFixture+DoublyNestedTestFixture");
+            CanConstructFrom(typeof(OuterClass.NestedTestFixture.DoublyNestedTestFixture), "OuterClass+NestedTestFixture+DoublyNestedTestFixture");
         }
 
         public void ConstructFromTypeWithoutTestFixtureAttributeContainingTest()
         {
             CanConstructFrom(typeof(FixtureWithoutTestFixtureAttributeContainingTest));
         }
- 
+
         [Test]
         public void ConstructFromTypeWithoutTestFixtureAttributeContainingTestCase()
         {
             CanConstructFrom(typeof(FixtureWithoutTestFixtureAttributeContainingTestCase));
         }
- 
+
         [Test]
         public void ConstructFromTypeWithoutTestFixtureAttributeContainingTestCaseSource()
         {
             CanConstructFrom(typeof(FixtureWithoutTestFixtureAttributeContainingTestCaseSource));
         }
- 
-#if !NUNITLITE
+
+#if !NETCF && !SILVERLIGHT && !PORTABLE
         [Test]
         public void ConstructFromTypeWithoutTestFixtureAttributeContainingTheory()
         {
@@ -118,29 +112,46 @@ namespace NUnit.Framework.Internal
         }
 
         [Test]
-        public void CannotRunBadConstructor()
+        public void BadConstructorRunsWithSetUpError()
         {
-            TestAssert.IsNotRunnable(typeof(BadCtorFixture));
+            var result = TestBuilder.RunTestFixture(typeof(BadCtorFixture));
+            Assert.That(result.ResultState, Is.EqualTo(ResultState.SetUpError));
         }
 
-        [Test] 
+        [Test]
         public void CanRunMultipleSetUp()
         {
             TestAssert.IsRunnable(typeof(MultipleSetUpAttributes));
         }
 
-        [Test] 
+        [Test]
         public void CanRunMultipleTearDown()
         {
             TestAssert.IsRunnable(typeof(MultipleTearDownAttributes));
         }
 
         [Test]
-        public void CannotRunIgnoredFixture()
+        public void FixtureUsingIgnoreAttributeIsIgnored()
         {
-            TestSuite suite = TestBuilder.MakeFixture( typeof( IgnoredFixture ) );
-            Assert.AreEqual( RunState.Ignored, suite.RunState );
-            Assert.AreEqual( "testing ignore a fixture", suite.Properties.Get(PropertyNames.SkipReason) );
+            TestSuite suite = TestBuilder.MakeFixture(typeof(FixtureUsingIgnoreAttribute));
+            Assert.AreEqual(RunState.Ignored, suite.RunState);
+            Assert.AreEqual("testing ignore a fixture", suite.Properties.Get(PropertyNames.SkipReason));
+        }
+
+        [Test]
+        public void FixtureUsingIgnorePropertyIsIgnored()
+        {
+            TestSuite suite = TestBuilder.MakeFixture(typeof(FixtureUsingIgnoreProperty));
+            Assert.AreEqual(RunState.Ignored, suite.RunState);
+            Assert.AreEqual("testing ignore a fixture", suite.Properties.Get(PropertyNames.SkipReason));
+        }
+
+        [Test]
+        public void FixtureUsingIgnoreReasonPropertyIsIgnored()
+        {
+            TestSuite suite = TestBuilder.MakeFixture(typeof(FixtureUsingIgnoreReasonProperty));
+            Assert.AreEqual(RunState.Ignored, suite.RunState);
+            Assert.AreEqual("testing ignore a fixture", suite.Properties.Get(PropertyNames.SkipReason));
         }
 
 //		[Test]
@@ -175,13 +186,13 @@ namespace NUnit.Framework.Internal
             Assert.That(suite.Tests.Count, Is.EqualTo(0));
         }
 
-        [Test] 
+        [Test]
         public void CanRunMultipleTestFixtureSetUp()
         {
             TestAssert.IsRunnable(typeof(MultipleFixtureSetUpAttributes));
         }
 
-        [Test] 
+        [Test]
         public void CanRunMultipleTestFixtureTearDown()
         {
             TestAssert.IsRunnable(typeof(MultipleFixtureTearDownAttributes));
@@ -205,12 +216,11 @@ namespace NUnit.Framework.Internal
             TestAssert.IsRunnable(typeof(StaticFixtureWithoutTestFixtureAttribute));
         }
 
-#if !NETCF
         [Test]
         public void CanRunGenericFixtureWithProperArgsProvided()
         {
             TestSuite suite = TestBuilder.MakeFixture(typeof(GenericFixtureWithProperArgsProvided<>));
-                //GetTestDataType("NUnit.TestData.TestFixtureData.GenericFixtureWithProperArgsProvided`1"));
+            // GetTestDataType("NUnit.TestData.TestFixtureData.GenericFixtureWithProperArgsProvided`1"));
             Assert.That(suite.RunState, Is.EqualTo(RunState.Runnable));
             Assert.That(suite is ParameterizedFixtureSuite);
             Assert.That(suite.Tests.Count, Is.EqualTo(2));
@@ -223,7 +233,7 @@ namespace NUnit.Framework.Internal
 //                GetTestDataType("NUnit.TestData.TestFixtureData.GenericFixtureWithNoTestFixtureAttribute`1"));
 //
 //            Assert.That(suite.RunState, Is.EqualTo(RunState.NotRunnable));
-//            Assert.That(suite.Properties.Get(PropertyNames.SkipReason), 
+//            Assert.That(suite.Properties.Get(PropertyNames.SkipReason),
 //                Does.StartWith("Fixture type contains generic parameters"));
 //        }
 
@@ -231,7 +241,7 @@ namespace NUnit.Framework.Internal
         public void CannotRunGenericFixtureWithNoArgsProvided()
         {
             TestSuite suite = TestBuilder.MakeFixture(typeof(GenericFixtureWithNoArgsProvided<>));
-                //GetTestDataType("NUnit.TestData.TestFixtureData.GenericFixtureWithNoArgsProvided`1"));
+            // GetTestDataType("NUnit.TestData.TestFixtureData.GenericFixtureWithNoArgsProvided`1"));
 
             Test fixture = (Test)suite.Tests[0];
             Assert.That(fixture.RunState, Is.EqualTo(RunState.NotRunnable));
@@ -242,7 +252,7 @@ namespace NUnit.Framework.Internal
         public void CannotRunGenericFixtureDerivedFromAbstractFixtureWithNoArgsProvided()
         {
             TestSuite suite = TestBuilder.MakeFixture(typeof(GenericFixtureDerivedFromAbstractFixtureWithNoArgsProvided<>));
-                //GetTestDataType("NUnit.TestData.TestFixtureData.GenericFixtureDerivedFromAbstractFixtureWithNoArgsProvided`1"));
+            // GetTestDataType("NUnit.TestData.TestFixtureData.GenericFixtureDerivedFromAbstractFixtureWithNoArgsProvided`1"));
             TestAssert.IsNotRunnable((Test)suite.Tests[0]);
         }
 
@@ -250,21 +260,21 @@ namespace NUnit.Framework.Internal
         public void CanRunGenericFixtureDerivedFromAbstractFixtureWithArgsProvided()
         {
             TestSuite suite = TestBuilder.MakeFixture(typeof(GenericFixtureDerivedFromAbstractFixtureWithArgsProvided<>));
-                //GetTestDataType("NUnit.TestData.TestFixtureData.GenericFixtureDerivedFromAbstractFixtureWithArgsProvided`1"));
+            // GetTestDataType("NUnit.TestData.TestFixtureData.GenericFixtureDerivedFromAbstractFixtureWithArgsProvided`1"));
             Assert.That(suite.RunState, Is.EqualTo(RunState.Runnable));
             Assert.That(suite is ParameterizedFixtureSuite);
             Assert.That(suite.Tests.Count, Is.EqualTo(2));
         }
-#endif
-        
+
         #region SetUp Signature
-        [Test] 
+
+        [Test]
         public void CannotRunPrivateSetUp()
         {
             TestAssert.IsNotRunnable(typeof(PrivateSetUp));
         }
 
-        [Test] 
+        [Test]
         public void CanRunProtectedSetUp()
         {
             TestAssert.IsRunnable(typeof(ProtectedSetUp));
@@ -273,7 +283,7 @@ namespace NUnit.Framework.Internal
         /// <summary>
         /// Determines whether this instance [can run static set up].
         /// </summary>
-        [Test] 
+        [Test]
         public void CanRunStaticSetUp()
         {
             TestAssert.IsRunnable(typeof(StaticSetUp));
@@ -290,22 +300,24 @@ namespace NUnit.Framework.Internal
         {
             TestAssert.IsNotRunnable(typeof(SetUpWithParameters));
         }
+
         #endregion
 
         #region TearDown Signature
-        [Test] 
+
+        [Test]
         public void CannotRunPrivateTearDown()
         {
             TestAssert.IsNotRunnable(typeof(PrivateTearDown));
         }
 
-        [Test] 
+        [Test]
         public void CanRunProtectedTearDown()
         {
             TestAssert.IsRunnable(typeof(ProtectedTearDown));
         }
 
-        [Test] 
+        [Test]
         public void CanRunStaticTearDown()
         {
             TestAssert.IsRunnable(typeof(StaticTearDown));
@@ -322,22 +334,24 @@ namespace NUnit.Framework.Internal
         {
             TestAssert.IsNotRunnable(typeof(TearDownWithParameters));
         }
+
         #endregion
 
         #region TestFixtureSetUp Signature
-        [Test] 
+
+        [Test]
         public void CannotRunPrivateFixtureSetUp()
         {
             TestAssert.IsNotRunnable(typeof(PrivateFixtureSetUp));
         }
 
-        [Test] 
+        [Test]
         public void CanRunProtectedFixtureSetUp()
         {
             TestAssert.IsRunnable(typeof(ProtectedFixtureSetUp));
         }
 
-        [Test] 
+        [Test]
         public void CanRunStaticFixtureSetUp()
         {
             TestAssert.IsRunnable(typeof(StaticFixtureSetUp));
@@ -354,22 +368,24 @@ namespace NUnit.Framework.Internal
         {
             TestAssert.IsNotRunnable(typeof(FixtureSetUpWithParameters));
         }
+
         #endregion
 
         #region TestFixtureTearDown Signature
-        [Test] 
+
+        [Test]
         public void CannotRunPrivateFixtureTearDown()
         {
             TestAssert.IsNotRunnable(typeof(PrivateFixtureTearDown));
         }
 
-        [Test] 
+        [Test]
         public void CanRunProtectedFixtureTearDown()
         {
             TestAssert.IsRunnable(typeof(ProtectedFixtureTearDown));
         }
 
-        [Test] 
+        [Test]
         public void CanRunStaticFixtureTearDown()
         {
             TestAssert.IsRunnable(typeof(StaticFixtureTearDown));
@@ -378,14 +394,14 @@ namespace NUnit.Framework.Internal
 //		[TestFixture]
 //			[Category("fixture category")]
 //			[Category("second")]
-//			private class HasCategories 
+//			private class HasCategories
 //		{
 //			[Test] public void OneTest()
 //			{}
 //		}
 //
 //		[Test]
-//		public void LoadCategories() 
+//		public void LoadCategories()
 //		{
 //			TestSuite fixture = LoadFixture("NUnit.Core.Tests.TestFixtureBuilderTests+HasCategories");
 //			Assert.IsNotNull(fixture);
@@ -403,6 +419,45 @@ namespace NUnit.Framework.Internal
         {
             TestAssert.IsNotRunnable(typeof(FixtureTearDownWithParameters));
         }
+
+        #endregion
+
+        #region Issue 318 - Test Fixture is null on ITest objects
+
+        public class FixtureNotNullTestAttribute : TestActionAttribute
+        {
+            private readonly string _location;
+
+            public FixtureNotNullTestAttribute(string location)
+            {
+                _location = location;
+            }
+
+            public override void BeforeTest(ITest test)
+            {
+                Assert.That(test, Is.Not.Null, "ITest is null on a " + _location);
+                Assert.That(test.Fixture, Is.Not.Null, "ITest.Fixture is null on a " + _location);
+                Assert.That(test.Fixture.GetType(), Is.EqualTo(test.FixtureType), "ITest.Fixture is not the correct type on a " + _location);
+            }
+        }
+
+        [FixtureNotNullTest("TestFixture class")]
+        [TestFixture]
+        public class FixtureIsNotNullForTests
+        {
+            [FixtureNotNullTest("Test method")]
+            [Test]
+            public void TestMethod()
+            {
+            }
+
+            [FixtureNotNullTest("TestCase method")]
+            [TestCase(1)]
+            public void TestCaseMethod(int i)
+            {
+            }
+        }
+
         #endregion
     }
 }

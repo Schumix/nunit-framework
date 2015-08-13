@@ -1,4 +1,4 @@
-﻿// ***********************************************************************
+// ***********************************************************************
 // Copyright (c) 2008-2014 Charlie Poole
 //
 // Permission is hereby granted, free of charge, to any person obtaining
@@ -8,10 +8,10 @@
 // distribute, sublicense, and/or sell copies of the Software, and to
 // permit persons to whom the Software is furnished to do so, subject to
 // the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be
 // included in all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -23,6 +23,9 @@
 
 using System;
 using System.Reflection;
+#if NETCF
+using System.Linq;
+#endif
 using NUnit.Framework.Interfaces;
 
 namespace NUnit.Framework.Internal.Builders
@@ -36,14 +39,14 @@ namespace NUnit.Framework.Internal.Builders
         private readonly Randomizer randomizer = Randomizer.CreateRandomizer();
 
         /// <summary>
-        /// Builds a single NUnitTestMethod, either as a child of the fixture 
+        /// Builds a single NUnitTestMethod, either as a child of the fixture
         /// or as one of a set of test cases under a ParameterizedTestMethodSuite.
         /// </summary>
         /// <param name="method">The MethodInfo from which to construct the TestMethod</param>
         /// <param name="parentSuite">The suite or fixture to which the new test will be added</param>
         /// <param name="parms">The ParameterSet to be used, or null</param>
         /// <returns></returns>
-        public TestMethod BuildTestMethod(MethodInfo method, Test parentSuite, ParameterSet parms)
+        public TestMethod BuildTestMethod(MethodInfo method, Test parentSuite, TestCaseParameters parms)
         {
             var testMethod = new TestMethod(method, parentSuite)
             {
@@ -57,11 +60,10 @@ namespace NUnit.Framework.Internal.Builders
             if (parentSuite != null)
                 prefix = parentSuite.FullName;
 
-            if (CheckTestMethodSignature(testMethod, parms))
-            {
-                if (parms == null || parms.Arguments == null)
-                    testMethod.ApplyAttributesToTest(method);
-            }
+            CheckTestMethodSignature(testMethod, parms);
+
+            if (parms == null || parms.Arguments == null)
+                testMethod.ApplyAttributesToTest(method);
 
             if (parms != null)
             {
@@ -93,12 +95,12 @@ namespace NUnit.Framework.Internal.Builders
         /// <summary>
         /// Helper method that checks the signature of a TestMethod and
         /// any supplied parameters to determine if the test is valid.
-        /// 
-        /// Currently, NUnitTestMethods are required to be public, 
+        ///
+        /// Currently, NUnitTestMethods are required to be public,
         /// non-abstract methods, either static or instance,
         /// returning void. They may take arguments but the _values must
         /// be provided or the TestMethod is not considered runnable.
-        /// 
+        ///
         /// Methods not meeting these criteria will be marked as
         /// non-runnable and the method will return false in that case.
         /// </summary>
@@ -106,28 +108,49 @@ namespace NUnit.Framework.Internal.Builders
         /// is found to be non-runnable, it will be modified.</param>
         /// <param name="parms">Parameters to be used for this test, or null</param>
         /// <returns>True if the method signature is valid, false if not</returns>
-        private static bool CheckTestMethodSignature(TestMethod testMethod, ParameterSet parms)
+        /// <remarks>
+        /// The return value is no longer used internally, but is retained
+        /// for testing purposes.
+        /// </remarks>
+        private static bool CheckTestMethodSignature(TestMethod testMethod, TestCaseParameters parms)
         {
             if (testMethod.Method.IsAbstract)
-            {
                 return MarkAsNotRunnable(testMethod, "Method is abstract");
-            }
 
             if (!testMethod.Method.IsPublic)
-            {
                 return MarkAsNotRunnable(testMethod, "Method is not public");
-            }
 
+            ParameterInfo[] parameters;
 #if NETCF
-    // TODO: Get this to work
             if (testMethod.Method.IsGenericMethodDefinition)
             {
-                return MarkAsNotRunnable(testMethod, "Generic test methods are not yet supported under .NET CF");
+                if (parms != null && parms.Arguments != null)
+                {
+                    testMethod.Method = testMethod.Method.MakeGenericMethodEx(parms.Arguments);
+                    if (testMethod.Method == null)
+                        return MarkAsNotRunnable(testMethod, "Cannot determine generic types by probing");
+                    parameters = testMethod.Method.GetParameters();
+                }
+                else
+                    parameters = new ParameterInfo[0];
             }
+            else
 #endif
 
-            ParameterInfo[] parameters = testMethod.Method.GetParameters();
-            int argsNeeded = parameters.Length;
+            parameters = testMethod.Method.GetParameters();
+
+#if !NETCF
+            int minArgsNeeded = 0;
+            foreach (var parameter in parameters)
+            {
+                // IsOptional is supported since .NET 1.1 
+                if (!parameter.IsOptional)
+                    minArgsNeeded++;
+            }
+#else
+            int minArgsNeeded = parameters.Length;
+#endif
+            int maxArgsNeeded = parameters.Length;
 
             object[] arglist = null;
             int argsProvided = 0;
@@ -146,16 +169,20 @@ namespace NUnit.Framework.Internal.Builders
                     return false;
             }
 
+#if NETCF
+            Type returnType = testMethod.Method.IsGenericMethodDefinition && (parms == null || parms.Arguments == null) ? typeof(void) : (Type)testMethod.Method.ReturnType;
+#else
             Type returnType = testMethod.Method.ReturnType;
+#endif
 
-#if NET_4_0 || NET_4_5
+#if NET_4_0 || NET_4_5 || PORTABLE
             if (AsyncInvocationRegion.IsAsyncOperation(testMethod.Method))
             {
-                if (returnType == typeof (void))
+                if (returnType == typeof(void))
                     return MarkAsNotRunnable(testMethod, "Async test method must have non-void return type");
 
                 var returnsGenericTask = returnType.IsGenericType &&
-                                         returnType.GetGenericTypeDefinition() == typeof (System.Threading.Tasks.Task<>);
+                    returnType.GetGenericTypeDefinition() == typeof(System.Threading.Tasks.Task<>);
 
                 if (returnsGenericTask && (parms == null || !parms.HasExpectedResult))
                     return MarkAsNotRunnable(testMethod,
@@ -167,7 +194,7 @@ namespace NUnit.Framework.Internal.Builders
             }
             else
 #endif
-            if (returnType == typeof (void))
+            if (returnType == typeof(void))
             {
                 if (parms != null && parms.HasExpectedResult)
                     return MarkAsNotRunnable(testMethod, "Method returning void cannot have an expected result");
@@ -175,81 +202,34 @@ namespace NUnit.Framework.Internal.Builders
             else if (parms == null || !parms.HasExpectedResult)
                 return MarkAsNotRunnable(testMethod, "Method has non-void return value, but no result is expected");
 
-            if (argsProvided > 0 && argsNeeded == 0)
-            {
+            if (argsProvided > 0 && maxArgsNeeded == 0)
                 return MarkAsNotRunnable(testMethod, "Arguments provided for method not taking any");
-            }
 
-            if (argsProvided == 0 && argsNeeded > 0)
-            {
+            if (argsProvided == 0 && minArgsNeeded > 0)
                 return MarkAsNotRunnable(testMethod, "No arguments were provided");
-            }
 
-            if (argsProvided != argsNeeded)
-            {
-                return MarkAsNotRunnable(testMethod, "Wrong number of arguments provided");
-            }
+            if (argsProvided < minArgsNeeded)
+                return MarkAsNotRunnable(testMethod, string.Format("Not enough arguments provided, provide at least {0} arguments.", minArgsNeeded));
 
-#if !NETCF
-            if (testMethod.Method.IsGenericMethodDefinition)
+            if (argsProvided > maxArgsNeeded)
+                return MarkAsNotRunnable(testMethod, string.Format("Too many arguments provided, provide at most {0} arguments.", maxArgsNeeded));
+
+            if (testMethod.Method.IsGenericMethodDefinition && arglist != null)
             {
-                Type[] typeArguments = GetTypeArgumentsForMethod(testMethod.Method, arglist);
-                foreach (object o in typeArguments)
-                    if (o == null)
-                    {
+                var typeArguments = new GenericMethodHelper(testMethod.Method).GetTypeArguments(arglist);
+                foreach (Type o in typeArguments)
+                    if (o == null || o == TypeHelper.NonmatchingType)
                         return MarkAsNotRunnable(testMethod, "Unable to determine type arguments for method");
-                    }
+
 
                 testMethod.Method = testMethod.Method.MakeGenericMethod(typeArguments);
                 parameters = testMethod.Method.GetParameters();
             }
-#endif
 
             if (arglist != null && parameters != null)
                 TypeHelper.ConvertArgumentList(arglist, parameters);
 
             return true;
-        }
-
-#if !NETCF
-        private static Type[] GetTypeArgumentsForMethod(MethodInfo method, object[] arglist)
-        {
-            Type[] typeParameters = method.GetGenericArguments();
-            Type[] typeArguments = new Type[typeParameters.Length];
-            ParameterInfo[] parameters = method.GetParameters();
-
-            for (int typeIndex = 0; typeIndex < typeArguments.Length; typeIndex++)
-            {
-                Type typeParameter = typeParameters[typeIndex];
-
-                for (int argIndex = 0; argIndex < parameters.Length; argIndex++)
-                {
-                    if (parameters[argIndex].ParameterType.Equals(typeParameter))
-                    {
-                        // If a null arg is provided, pass null as the Type
-                        // BestCommonType knows how to deal with this
-                        Type argType = arglist[argIndex] != null
-                            ? arglist[argIndex].GetType()
-                            : null;
-                        typeArguments[typeIndex] = TypeHelper.BestCommonType(
-                            typeArguments[typeIndex],
-                            argType);
-                    }
-                }
-            }
-
-            return typeArguments;
-        }
-#endif
-
-        private static MethodInfo GetExceptionHandler(Type fixtureType, string name)
-        {
-            return fixtureType.GetMethod(
-                name,
-                BindingFlags.Static | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                null,
-                new Type[] { typeof(System.Exception) },
-                null);
         }
 
         private static bool MarkAsNotRunnable(TestMethod testMethod, string reason)

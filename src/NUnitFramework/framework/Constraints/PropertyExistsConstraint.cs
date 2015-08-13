@@ -31,7 +31,7 @@ namespace NUnit.Framework.Constraints
     /// exists on the object provided through Match.
     /// 
     /// Originally, PropertyConstraint provided this feature
-    /// in addition to making optional tests on the vaue
+    /// in addition to making optional tests on the value
     /// of the property. The two constraints are now separate.
     /// </summary>
     public class PropertyExistsConstraint : Constraint
@@ -41,7 +41,7 @@ namespace NUnit.Framework.Constraints
         Type actualType;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="T:PropertyExistConstraint"/> class.
+        /// Initializes a new instance of the <see cref="PropertyExistsConstraint"/> class.
         /// </summary>
         /// <param name="name">The name of the property.</param>
         public PropertyExistsConstraint(string name)
@@ -73,8 +73,11 @@ namespace NUnit.Framework.Constraints
                 actualType = actual.GetType();
 
             PropertyInfo property = actualType.GetProperty(name,
+#if PORTABLE
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+#else
                 BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.GetProperty);
-
+#endif
             return new ConstraintResult(this, actualType, property != null);
         }
 

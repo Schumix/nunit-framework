@@ -20,7 +20,6 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -48,13 +47,13 @@ namespace NUnit.Framework
     ///   {}
     ///   
     ///   [Test(Description = "more detailed description")]
-    ///   publc void TestDescriptionMethod()
+    ///   public void TestDescriptionMethod()
     ///   {}
     /// }
     /// </example>
     /// 
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited=true)]
-    public class TheoryAttribute : TestCaseBuilderAttribute, ITestBuilder, IImplyFixture
+    public class TheoryAttribute : NUnitAttribute, ITestBuilder, IImplyFixture
     {
         private NUnitTestCaseBuilder _builder = new NUnitTestCaseBuilder();
         private IParameterDataProvider _dataProvider = new DatapointProvider();
@@ -81,7 +80,7 @@ namespace NUnit.Framework
                     sources[i] = _dataProvider.GetDataFor(parameters[i]);
 
                 foreach (var parms in new CombinatorialStrategy().GetTestCases(sources))
-                    tests.Add(_builder.BuildTestMethod(method, suite, (ParameterSet)parms));
+                    tests.Add(_builder.BuildTestMethod(method, suite, (TestCaseParameters)parms));
             }
 
             return tests;

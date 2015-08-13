@@ -21,7 +21,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
 
-#if !SILVERLIGHT
+#if !SILVERLIGHT && !PORTABLE
 using System;
 using System.IO;
 using System.Text;
@@ -29,7 +29,6 @@ using System.Xml;
 using NUnit.Framework;
 using NUnit.Framework.Interfaces;
 using NUnit.Tests.Assemblies;
-using XmlNode = System.Xml.XmlNode;
 
 namespace NUnitLite.Runner.Tests
 {
@@ -41,7 +40,7 @@ namespace NUnitLite.Runner.Tests
         private XmlNode cultureNode;
         private XmlNode suiteNode;
 
-        [TestFixtureSetUp]
+        [OneTimeSetUp]
         public void RunMockAssemblyTests()
         {
             ITestResult result = NUnit.TestUtilities.TestBuilder.RunTestFixture(typeof(MockTestFixture));
@@ -111,13 +110,13 @@ namespace NUnitLite.Runner.Tests
             Assert.That(RequiredAttribute(topNode, "name"), Is.EqualTo("NUnit.Tests.Assemblies.MockTestFixture"));
         }
 
-        [TestCase("total", MockTestFixture.Tests-MockTestFixture.Explicit)]
+        [TestCase("total", MockTestFixture.Tests)]
         [TestCase("errors", MockTestFixture.Errors)]
         [TestCase("failures", MockTestFixture.Failures)]
         [TestCase("inconclusive", MockTestFixture.Inconclusive)]
-        [TestCase("not-run", MockTestFixture.NotRun-MockTestFixture.Explicit)]
+        [TestCase("not-run", MockTestFixture.NotRun+MockTestFixture.NotRunnable-MockTestFixture.Explicit)]
         [TestCase("ignored", MockTestFixture.Ignored)]
-        [TestCase("skipped", MockTestFixture.NotRun-MockTestFixture.Ignored-MockTestFixture.NotRunnable-MockTestFixture.Explicit)]
+        [TestCase("skipped", MockTestFixture.NotRun-MockTestFixture.Ignored-MockTestFixture.Explicit)]
         [TestCase("invalid", MockTestFixture.NotRunnable)]
         public void TestResults_CounterIsCorrect(string name, int count)
         {
@@ -128,7 +127,7 @@ namespace NUnitLite.Runner.Tests
         public void TestResults_HasValidDateAttribute()
         {
             string dateString = RequiredAttribute(topNode, "date");
-#if (CLR_2_0 || CLR_4_0) && !NETCF
+#if !NETCF
             DateTime date;
             Assert.That(DateTime.TryParse(dateString, out date), "Invalid date attribute: {0}", dateString);
 #endif
@@ -138,7 +137,7 @@ namespace NUnitLite.Runner.Tests
         public void TestResults_HasValidTimeAttribute()
         {
             string timeString = RequiredAttribute(topNode, "time");
-#if (CLR_2_0 || CLR_4_0) && !NETCF
+#if !NETCF
             DateTime time;
             Assert.That(DateTime.TryParse(timeString, out time), "Invalid time attribute: {0}", timeString);
 #endif
@@ -225,7 +224,7 @@ namespace NUnitLite.Runner.Tests
         {
         }
 
-        #region Helper Methods
+#region Helper Methods
 
         private string RequiredAttribute(XmlNode node, string name)
         {
@@ -235,7 +234,7 @@ namespace NUnitLite.Runner.Tests
             return attr.Value;
         }
 
-        #endregion
+#endregion
     }
 }
 #endif

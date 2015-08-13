@@ -1,5 +1,5 @@
 ﻿// ***********************************************************************
-// Copyright (c) 2008 Charlie Poole
+// Copyright (c) 2008-2015 Charlie Poole
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -22,6 +22,9 @@
 // ***********************************************************************
 
 using System;
+#if NETCF
+using System.Linq;
+#endif
 using System.Reflection;
 using System.Text;
 
@@ -32,6 +35,20 @@ namespace NUnit.Framework.Internal
     /// </summary>
     public class TypeHelper
     {
+        private const int STRING_MAX = 40;
+        private const int STRING_LIMIT = STRING_MAX - 3;
+        private const string THREE_DOTS = "...";
+
+        internal sealed class NonmatchingTypeClass
+        {
+        }
+
+        /// <summary>
+        /// A special value, which is used to indicate that BestCommonType() method
+        /// was unable to find a common type for the specified arguments.
+        /// </summary>
+        public static readonly Type NonmatchingType = typeof( NonmatchingTypeClass );
+
         /// <summary>
         /// Gets the display name for a Type as used by NUnit.
         /// </summary>
@@ -105,7 +122,12 @@ namespace NUnit.Framework.Internal
                 else if (arg is decimal) display += "m";
                 else if (arg is long) display += "L";
                 else if (arg is ulong) display += "UL";
-                else if (arg is string) display = "\"" + display + "\"";
+                else if (arg is string)
+                {
+                    if (display.Length > STRING_MAX)
+                        display = display.Substring(0, STRING_LIMIT) + THREE_DOTS;
+                    display = "\"" + display + "\"";
+                }
 
                 sb.Append(display);
             }
@@ -123,6 +145,9 @@ namespace NUnit.Framework.Internal
         /// <returns>Either type1 or type2, depending on which is more general.</returns>
         public static Type BestCommonType(Type type1, Type type2)
         {
+            if ( type1 == TypeHelper.NonmatchingType ) return TypeHelper.NonmatchingType;
+            if ( type2 == TypeHelper.NonmatchingType ) return TypeHelper.NonmatchingType;
+
             if (type1 == type2) return type1;
             if (type1 == null) return type2;
             if (type2 == null) return type1;
@@ -163,7 +188,10 @@ namespace NUnit.Framework.Internal
                 if (type2 == typeof(sbyte)) return type2;
             }
 
-            return type1;
+            if ( type1.IsAssignableFrom( type2 ) ) return type1;
+            if ( type2.IsAssignableFrom( type1 ) ) return type2;
+
+            return TypeHelper.NonmatchingType;
         }
 
         /// <summary>
@@ -189,16 +217,16 @@ namespace NUnit.Framework.Internal
         }
 
         /// <summary>
-        /// Convert an argument list to the required paramter types.
+        /// Convert an argument list to the required parameter types.
         /// Currently, only widening numeric conversions are performed.
         /// </summary>
         /// <param name="arglist">An array of args to be converted</param>
-        /// <param name="parameters">A ParamterInfo[] whose types will be used as targets</param>
+        /// <param name="parameters">A ParameterInfo[] whose types will be used as targets</param>
         public static void ConvertArgumentList(object[] arglist, ParameterInfo[] parameters)
         {
-            System.Diagnostics.Debug.Assert(arglist.Length == parameters.Length);
+            System.Diagnostics.Debug.Assert(arglist.Length <= parameters.Length);
 
-            for (int i = 0; i < parameters.Length; i++)
+            for (int i = 0; i < arglist.Length; i++)
             {
                 object arg = arglist[i];
 
@@ -255,6 +283,20 @@ namespace NUnit.Framework.Internal
         {
             Type[] typeParameters = type.GetGenericArguments();
 
+#if NETCF
+            Type[] argTypes = arglist.Select(a => a == null ? typeof(object) : a.GetType()).ToArray();
+            if (argTypes.Length != typeParameters.Length || argTypes.Any(at => at.IsGenericType))
+                return false;
+            try
+            {
+                type = type.MakeGenericType(argTypes);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+#endif
+
             foreach (ConstructorInfo ctor in type.GetConstructors())
             {
                 ParameterInfo[] parameters = ctor.GetParameters();
@@ -266,10 +308,10 @@ namespace NUnit.Framework.Internal
                 {
                     for (int j = 0; j < arglist.Length; j++)
                     {
-                        if (parameters[j].ParameterType.Equals(typeParameters[i]))
+                        if (typeParameters[i].IsGenericParameter || parameters[j].ParameterType.Equals(typeParameters[i]))
                             typeArgs[i] = TypeHelper.BestCommonType(
-                                typeArgs[i],
-                                arglist[j].GetType());
+                                              typeArgs[i],
+                                              arglist[j].GetType());
                     }
 
                     if (typeArgs[i] == null)

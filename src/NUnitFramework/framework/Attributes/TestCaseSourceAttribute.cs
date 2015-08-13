@@ -1,5 +1,5 @@
 // ***********************************************************************
-// Copyright (c) 2008 Charlie Poole
+// Copyright (c) 2008-2015 Charlie Poole
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -8,10 +8,10 @@
 // distribute, sublicense, and/or sell copies of the Software, and to
 // permit persons to whom the Software is furnished to do so, subject to
 // the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be
 // included in all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -36,16 +36,16 @@ namespace NUnit.Framework
     /// provide test cases for a test method.
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = false)]
-    public class TestCaseSourceAttribute : TestCaseBuilderAttribute, ITestBuilder, IImplyFixture
+    public class TestCaseSourceAttribute : NUnitAttribute, ITestBuilder, IImplyFixture
     {
-        private readonly object[] _sourceConstructorParameters;
-
         private NUnitTestCaseBuilder _builder = new NUnitTestCaseBuilder();
 
+        #region Constructors
+
         /// <summary>
-        /// Construct with the name of the method, property or field that will prvide data
+        /// Construct with the name of the method, property or field that will provide data
         /// </summary>
-        /// <param name="sourceName">The name of the method, property or field that will provide data</param>
+        /// <param name="sourceName">The name of a static method, property or field that will provide data.</param>
         public TestCaseSourceAttribute(string sourceName)
         {
             this.SourceName = sourceName;
@@ -55,15 +55,13 @@ namespace NUnit.Framework
         /// Construct with a Type and name
         /// </summary>
         /// <param name="sourceType">The Type that will provide data</param>
-        /// <param name="sourceName">The name of the method, property or field that will provide data</param>
-        /// <param name="constructorParameters">The constructor parameters to be used when instantiating the sourceType.</param>
-        public TestCaseSourceAttribute(Type sourceType, string sourceName, params object[] constructorParameters)
+        /// <param name="sourceName">The name of a static method, property or field that will provide data.</param>
+        public TestCaseSourceAttribute(Type sourceType, string sourceName)
         {
             this.SourceType = sourceType;
             this.SourceName = sourceName;
-            _sourceConstructorParameters = constructorParameters;
         }
-        
+
         /// <summary>
         /// Construct with a Type
         /// </summary>
@@ -72,6 +70,10 @@ namespace NUnit.Framework
         {
             this.SourceType = sourceType;
         }
+
+        #endregion
+
+        #region Properties
 
         /// <summary>
         /// The name of a the method, property or fiend to be used as a source
@@ -84,125 +86,11 @@ namespace NUnit.Framework
         public Type SourceType { get; private set; }
 
         /// <summary>
-        /// Gets or sets the category associated with this test.
-        /// May be a single category or a comma-separated list.
+        /// Gets or sets the category associated with every fixture created from
+        /// this attribute. May be a single category or a comma-separated list.
         /// </summary>
         public string Category { get; set; }
 
-        #region ITestCaseSource Members
-        /// <summary>
-        /// Returns a set of ITestCaseDataItems for use as arguments
-        /// to a parameterized test method.
-        /// </summary>
-        /// <param name="method">The method for which data is needed.</param>
-        /// <returns></returns>
-        public IEnumerable<ITestCaseData> GetTestCasesFor(MethodInfo method)
-        {
-            List<ITestCaseData> data = new List<ITestCaseData>();
-            IEnumerable source = GetTestCaseSource(method);
-
-            if (source != null)
-            {
-                try
-                {
-                    ParameterInfo[] parameters = method.GetParameters();
-
-                    foreach (object item in source)
-                    {
-                        ParameterSet parms;
-                        ITestCaseData testCaseData = item as ITestCaseData;
-
-                        if (testCaseData != null)
-                            parms = new ParameterSet(testCaseData);
-                        else
-                        {
-                            object[] args = item as object[];
-                            if (args != null)
-                            {
-                                if (args.Length != parameters.Length)
-                                    args = new object[] { item };
-                            }
-                            //else if (parameters.Length == 1 && parameters[0].ParameterType.IsAssignableFrom(item.GetType()))
-                            //{
-                            //    args = new object[] { item };
-                            //}
-                            else if (item is Array)
-                            {
-                                Array array = item as Array;
-
-                                if (array.Rank == 1 && array.Length == parameters.Length)
-                                {
-                                    args = new object[array.Length];
-                                    for (int i = 0; i < array.Length; i++)
-                                        args[i] = (object)array.GetValue(i);
-                                }
-                                else
-                                {
-                                    args = new object[] { item };
-                                }
-                            }
-                            else
-                            {
-                                args = new object[] { item };
-                            }
-
-                            parms = new ParameterSet(args);
-                        }
-
-                        if (this.Category != null)
-                            foreach (string cat in this.Category.Split(new char[] { ',' }))
-                                parms.Properties.Add(PropertyNames.Category, cat);
-
-                        data.Add(parms);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    data.Clear();
-                    data.Add(new ParameterSet(ex));
-                }
-            }
-
-            return data;
-        }
-
-        private IEnumerable GetTestCaseSource(MethodInfo method)
-        {
-            IEnumerable source = null;
-
-            Type sourceType = this.SourceType;
-            if (sourceType == null)
-                sourceType = method.ReflectedType;
-
-            if (this.SourceName == null)
-            {
-                return Reflect.Construct(sourceType, _sourceConstructorParameters) as IEnumerable;
-            }
-
-            MemberInfo[] members = sourceType.GetMember(SourceName,
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance);
-            if (members.Length == 1)
-            {
-                MemberInfo member = members[0];
-                object sourceobject = Internal.Reflect.Construct(sourceType, _sourceConstructorParameters);
-                switch (member.MemberType)
-                {
-                    case MemberTypes.Field:
-                        FieldInfo field = member as FieldInfo;
-                        source = (IEnumerable)field.GetValue(sourceobject);
-                        break;
-                    case MemberTypes.Property:
-                        PropertyInfo property = member as PropertyInfo;
-                        source = (IEnumerable)property.GetValue(sourceobject, null);
-                        break;
-                    case MemberTypes.Method:
-                        MethodInfo m = member as MethodInfo;
-                        source = (IEnumerable)m.Invoke(sourceobject, null);
-                        break;
-                }
-            }
-            return source;
-        }
         #endregion
 
         #region ITestBuilder Members
@@ -216,12 +104,157 @@ namespace NUnit.Framework
         /// <returns>One or more TestMethods</returns>
         public IEnumerable<TestMethod> BuildFrom(MethodInfo method, Test suite)
         {
-            List<TestMethod> tests = new List<TestMethod>();
+            foreach (TestCaseParameters parms in GetTestCasesFor(method))
+                yield return _builder.BuildTestMethod(method, suite, parms);
+        }
 
-            foreach (ParameterSet parms in GetTestCasesFor(method))
-                tests.Add(_builder.BuildTestMethod(method, suite, parms));
+        #endregion
 
-            return tests;
+        #region Helper Methods
+
+        /// <summary>
+        /// Returns a set of ITestCaseDataItems for use as arguments
+        /// to a parameterized test method.
+        /// </summary>
+        /// <param name="method">The method for which data is needed.</param>
+        /// <returns></returns>
+        private IEnumerable<ITestCaseData> GetTestCasesFor(MethodInfo method)
+        {
+            List<ITestCaseData> data = new List<ITestCaseData>();
+
+            try
+            {
+                IEnumerable source = GetTestCaseSource(method);
+
+                if (source != null)
+                {
+#if NETCF
+                    ParameterInfo[] parameters = method.IsGenericMethodDefinition ? new ParameterInfo[0] : method.GetParameters();
+#else
+                    ParameterInfo[] parameters = method.GetParameters();
+#endif
+
+                    foreach (object item in source)
+                    {
+                        var parms = item as ITestCaseData;
+
+                        if (parms == null)
+                        {
+                            object[] args = item as object[];
+                            if (args != null)
+                            {
+#if NETCF
+                                if (method.IsGenericMethodDefinition)
+                                {
+                                    var mi = method.MakeGenericMethodEx(args);
+                                    parameters = mi == null ? new ParameterInfo[0] : mi.GetParameters();
+                                }
+#endif
+                                if (args.Length != parameters.Length)
+                                    args = new object[] { item };
+                            }
+                            // else if (parameters.Length == 1 && parameters[0].ParameterType.IsAssignableFrom(item.GetType()))
+                            // {
+                            //    args = new object[] { item };
+                            // }
+                            else if (item is Array)
+                            {
+                                Array array = item as Array;
+
+#if NETCF
+                                if (array.Rank == 1 && (method.IsGenericMethodDefinition || array.Length == parameters.Length))
+#else
+                                if (array.Rank == 1 && array.Length == parameters.Length)
+#endif
+                                {
+                                    args = new object[array.Length];
+                                    for (int i = 0; i < array.Length; i++)
+                                        args[i] = array.GetValue(i);
+#if NETCF
+                                    if (method.IsGenericMethodDefinition)
+                                    {
+                                        var mi = method.MakeGenericMethodEx(args);
+
+                                        if (mi == null || array.Length != mi.GetParameters().Length)
+                                            args = new object[] {item};
+                                    }
+#endif
+                                }
+                                else
+                                {
+                                    args = new object[] { item };
+                                }
+                            }
+                            else
+                            {
+                                args = new object[] { item };
+                            }
+
+                            parms = new TestCaseParameters(args);
+                        }
+
+                        if (this.Category != null)
+                            foreach (string cat in this.Category.Split(new char[] { ',' }))
+                                parms.Properties.Add(PropertyNames.Category, cat);
+
+                        data.Add(parms);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                data.Clear();
+                data.Add(new TestCaseParameters(ex));
+            }
+
+            return data;
+        }
+
+        private IEnumerable GetTestCaseSource(MethodInfo method)
+        {
+            Type sourceType = this.SourceType;
+            if (sourceType == null)
+                sourceType = method.ReflectedType;
+
+            // Handle Type implementing IEnumerable separately
+            if (SourceName == null)
+                return Reflect.Construct(sourceType) as IEnumerable;
+
+            MemberInfo[] members = sourceType.GetMember(SourceName,
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance);
+
+            if (members.Length == 1)
+            {
+                MemberInfo member = members[0];
+
+                var field = member as FieldInfo;
+                if (field != null)
+                    return field.IsStatic
+                        ? (IEnumerable)field.GetValue(null)
+                        : SourceMustBeStaticError();
+
+                var property = member as PropertyInfo;
+                if (property != null)
+                    return property.GetGetMethod(true).IsStatic
+                        ? (IEnumerable)property.GetValue(null, null)
+                        : SourceMustBeStaticError();
+
+                var m = member as MethodInfo;
+                if (m != null)
+                    return m.IsStatic
+                        ? (IEnumerable)m.Invoke(null, null)
+                        : SourceMustBeStaticError();
+            }
+
+            return null;
+        }
+
+        private static IEnumerable SourceMustBeStaticError()
+        {
+            var parms = new TestCaseParameters();
+            parms.RunState = RunState.NotRunnable;
+            parms.Properties.Set(PropertyNames.SkipReason, "The sourceName specified on a TestCaseSourceAttribute must refer to a static field, property or method.");
+            return new TestCaseParameters[] { parms };
         }
 
         #endregion

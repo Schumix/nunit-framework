@@ -21,14 +21,14 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
 
-#if SILVERLIGHT
+#if SILVERLIGHT || PORTABLE
 namespace System
 {
     /// <summary>
-    /// Replacement for the SerializableAttribute so we compile
-    /// under Silverlight.
+    /// A shim of the .NET attribute for platforms that do not support it.
     /// </summary>
-    public class SerializableAttribute : Attribute
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum | AttributeTargets.Delegate, Inherited = false)]
+    public sealed class SerializableAttribute : Attribute
     {
     }
 }

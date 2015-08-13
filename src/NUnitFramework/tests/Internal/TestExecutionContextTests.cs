@@ -25,14 +25,13 @@ using System;
 using System.Reflection;
 using System.Threading;
 using System.Globalization;
+using NUnit.Common;
 using NUnit.Framework;
 #if !NETCF
 using System.Security.Principal;
 #endif
-#if !NUNITLITE
 using NUnit.TestData.TestContextData;
 using NUnit.TestUtilities;
-#endif
 
 namespace NUnit.Framework.Internal
 {
@@ -45,7 +44,7 @@ namespace NUnit.Framework.Internal
         TestExecutionContext fixtureContext;
         TestExecutionContext setupContext;
 
-#if !NETCF && !SILVERLIGHT
+#if !NETCF && !SILVERLIGHT && !PORTABLE
         string originalDirectory;
         IPrincipal originalPrincipal;
 #endif
@@ -66,7 +65,7 @@ namespace NUnit.Framework.Internal
             Assert.That(ec.CurrentTest.Name, Is.EqualTo("TestExecutionContextTests"));
             Assert.That(ec.CurrentTest.FullName,
                 Is.EqualTo("NUnit.Framework.Internal.TestExecutionContextTests"));
-            Assert.That(fixtureContext.CurrentTest.Id, Is.GreaterThan(0));
+            Assert.That(fixtureContext.CurrentTest.Id, Is.Not.Null.And.Not.Empty);
             Assert.That(fixtureContext.CurrentTest.Properties.Get("Question"), Is.EqualTo("Why?"));
         }
 
@@ -83,7 +82,7 @@ namespace NUnit.Framework.Internal
             originalUICulture = CultureInfo.CurrentUICulture;
 #endif
 
-#if !NETCF && !SILVERLIGHT
+#if !NETCF && !SILVERLIGHT && !PORTABLE
             originalDirectory = Environment.CurrentDirectory;
             originalPrincipal = Thread.CurrentPrincipal;
 #endif
@@ -97,7 +96,7 @@ namespace NUnit.Framework.Internal
             Thread.CurrentThread.CurrentUICulture = originalUICulture;
 #endif
 
-#if !NETCF && !SILVERLIGHT
+#if !NETCF && !SILVERLIGHT && !PORTABLE
             Environment.CurrentDirectory = originalDirectory;
             Thread.CurrentPrincipal = originalPrincipal;
 #endif
@@ -126,7 +125,7 @@ namespace NUnit.Framework.Internal
         [Test]
         public void FixtureSetUpCanAccessFixtureId()
         {
-            Assert.That(fixtureContext.CurrentTest.Id, Is.GreaterThan(0));
+            Assert.That(fixtureContext.CurrentTest.Id, Is.Not.Null.And.Not.Empty);
         }
 
         [Test]
@@ -151,7 +150,7 @@ namespace NUnit.Framework.Internal
         [Test]
         public void SetUpCanAccessTestId()
         {
-            Assert.That(setupContext.CurrentTest.Id, Is.GreaterThan(0));
+            Assert.That(setupContext.CurrentTest.Id, Is.Not.Null.And.Not.Empty);
         }
 
         [Test]
@@ -177,7 +176,7 @@ namespace NUnit.Framework.Internal
         [Test]
         public void TestCanAccessItsOwnId()
         {
-            Assert.That(TestExecutionContext.CurrentContext.CurrentTest.Id, Is.GreaterThan(0));
+            Assert.That(TestExecutionContext.CurrentContext.CurrentTest.Id, Is.Not.Null.And.Not.Empty);
         }
 
         [Test]
@@ -283,7 +282,7 @@ namespace NUnit.Framework.Internal
 
         #region CurrentPrincipal
 
-#if !NETCF && !SILVERLIGHT
+#if !NETCF && !SILVERLIGHT && !PORTABLE
         [Test]
         public void FixtureSetUpContextReflectsCurrentPrincipal()
         {
@@ -367,7 +366,7 @@ namespace NUnit.Framework.Internal
 
         #region Cross-domain Tests
 
-#if !SILVERLIGHT && !NETCF
+#if !SILVERLIGHT && !NETCF && !PORTABLE
         [Test]
         public void CanCreateObjectInAppDomain()
         {
@@ -391,4 +390,48 @@ namespace NUnit.Framework.Internal
 
         #endregion
     }
+
+#if !PORTABLE && !SILVERLIGHT && !NETCF
+    [TestFixture]
+    public class TextExecutionContextInAppDomain
+    {
+        private RunsInAppDomain _runsInAppDomain;
+
+        [SetUp]
+        public void SetUp()
+        {
+            var domain = AppDomain.CreateDomain("TestDomain", null, AppDomain.CurrentDomain.BaseDirectory, AppDomain.CurrentDomain.RelativeSearchPath, false);
+            _runsInAppDomain = domain.CreateInstanceAndUnwrap(Assembly.GetExecutingAssembly().FullName,
+                "NUnit.Framework.Internal.RunsInAppDomain") as RunsInAppDomain;
+            Assert.That(_runsInAppDomain, Is.Not.Null);
+        }
+
+        [Test]
+        [Description("Issue 71 - NUnit swallows console output from AppDomains created within tests")]
+        public void CanWriteToConsoleInAppDomain()
+        {
+            _runsInAppDomain.WriteToConsole();
+        }
+
+        [Test]
+        [Description("Issue 210 - TestContext.WriteLine in an AppDomain causes an error")]
+        public void CanWriteToTestContextInAppDomain()
+        {
+            _runsInAppDomain.WriteToTestContext();
+        }
+    }
+
+    internal class RunsInAppDomain : MarshalByRefObject
+    {
+        public void WriteToConsole()
+        {
+            Console.WriteLine("RunsInAppDomain.WriteToConsole");
+        }
+
+        public void WriteToTestContext()
+        {
+            TestContext.WriteLine("RunsInAppDomain.WriteToTestContext");
+        }
+    }
+#endif
 }

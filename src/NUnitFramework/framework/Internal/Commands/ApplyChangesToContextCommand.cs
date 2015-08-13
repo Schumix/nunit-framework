@@ -23,6 +23,8 @@
 
 using System;
 using System.Threading;
+using NUnit.Framework.Interfaces;
+
 namespace NUnit.Framework.Internal.Commands
 {
     /// <summary>
@@ -52,7 +54,7 @@ namespace NUnit.Framework.Internal.Commands
             }
             catch (Exception ex)
             {
-#if !NETCF && !SILVERLIGHT
+#if !NETCF && !SILVERLIGHT && !PORTABLE
                 if (ex is ThreadAbortException)
                     Thread.ResetAbort();
 #endif

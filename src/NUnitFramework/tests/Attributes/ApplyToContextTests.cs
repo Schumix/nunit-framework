@@ -22,6 +22,7 @@
 // ***********************************************************************
 
 using System.Globalization;
+using NUnit.Framework.Interfaces;
 using NUnit.Framework.Internal;
 
 namespace NUnit.Framework.Attributes
@@ -36,7 +37,6 @@ namespace NUnit.Framework.Attributes
             _context = new TestExecutionContext();
         }
 
-#if !NUNITLITE
         [Test]
         public void ParallelizableAttribute()
         {
@@ -44,7 +44,6 @@ namespace NUnit.Framework.Attributes
             attr.ApplyToContext(_context);
             Assert.That(_context.ParallelScope, Is.EqualTo(ParallelScope.Fixtures));
         }
-#endif
 
 #if !NETCF
         [Test]
@@ -63,7 +62,7 @@ namespace NUnit.Framework.Attributes
             Assert.That(_context.CurrentUICulture, Is.EqualTo(new CultureInfo("fr-FR")));
         }
 
-#if !SILVERLIGHT
+#if !PORTABLE
         [Test]
         public void TimeoutAttribute()
         {

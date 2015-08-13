@@ -21,10 +21,8 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
 
-using System;
 using System.Collections.Generic;
-using System.Text;
-using System.Xml;
+using NUnit.Common;
 using NUnit.Engine.Internal;
 
 namespace NUnit.Engine.Runners
@@ -37,7 +35,7 @@ namespace NUnit.Engine.Runners
     {
         // The runners created by the derived class will (at least at the time
         // of writing this comment) be either TestDomainRunners or ProcessRunners.
-        private List<ITestEngineRunner> _runners = new List<ITestEngineRunner>();
+        private readonly List<ITestEngineRunner> _runners = new List<ITestEngineRunner>();
 
         public AggregatingTestRunner(ServiceContext services, TestPackage package) : base(services, package) { }
 
@@ -47,18 +45,18 @@ namespace NUnit.Engine.Runners
         /// Explore a TestPackage and return information about
         /// the tests found.
         /// </summary>
-        /// <param name="package">The TestPackage to be explored</param>
+        /// <param name="filter">A TestFilter used to select tests</param>
         /// <returns>A TestEngineResult.</returns>
         protected override TestEngineResult ExploreTests(TestFilter filter)
         {
-            List<TestEngineResult> results = new List<TestEngineResult>();
+            var results = new List<TestEngineResult>();
 
             foreach (ITestEngineRunner runner in _runners)
                 results.Add(runner.Explore(filter));
 
             TestEngineResult result = ResultHelper.Merge(results);
 
-            return IsProjectPackage(this.TestPackage)
+            return IsProjectPackage(TestPackage)
                 ? result.MakePackageResult(TestPackage.Name, TestPackage.FullName)
                 : result;
         }
@@ -66,26 +64,16 @@ namespace NUnit.Engine.Runners
         /// <summary>
         /// Load a TestPackage for possible execution
         /// </summary>
-        /// <param name="package">The TestPackage to be loaded</param>
         /// <returns>A TestEngineResult.</returns>
         protected override TestEngineResult LoadPackage()
         {
-            List<TestPackage> packages = new List<TestPackage>();
+            var results = new List<TestEngineResult>();
 
-            foreach (string testFile in TestPackage.TestFiles)
+            foreach (var subPackage in TestPackage.SubPackages)
             {
-                TestPackage subPackage = new TestPackage(testFile);
-                if (Services.ProjectService.IsProjectFile(testFile))
-                    Services.ProjectService.ExpandProjectPackage(subPackage);
-                foreach (string key in TestPackage.Settings.Keys)
-                    subPackage.Settings[key] = TestPackage.Settings[key];
-                packages.Add(subPackage);
-            }
+                if (ProjectService.CanLoadFrom(subPackage.FullName))
+                    ProjectService.ExpandProjectPackage(subPackage);
 
-            List<TestEngineResult> results = new List<TestEngineResult>();
-
-            foreach (TestPackage subPackage in packages)
-            {
                 var runner = CreateRunner(subPackage);
                 _runners.Add(runner);
                 results.Add(runner.Load());
@@ -95,15 +83,12 @@ namespace NUnit.Engine.Runners
         }
 
         /// <summary>
-        /// Unload any loaded TestPackages and clear the
-        /// list of runners.
+        /// Unload any loaded TestPackages.
         /// </summary>
         public override void UnloadPackage()
         {
             foreach (ITestEngineRunner runner in _runners)
                 runner.Unload();
-
-            _runners.Clear();
         }
 
         /// <summary>
@@ -125,20 +110,27 @@ namespace NUnit.Engine.Runners
         /// <summary>
         /// Run the tests in a loaded TestPackage
         /// </summary>
+        /// <param name="listener">An ITestEventHandler to receive events</param>
         /// <param name="filter">A TestFilter used to select tests</param>
         /// <returns>
         /// A TestEngineResult giving the result of the test execution.
         /// </returns>
         protected override TestEngineResult RunTests(ITestEventListener listener, TestFilter filter)
         {
-            List<TestEngineResult> results = new List<TestEngineResult>();
+            var results = new List<TestEngineResult>();
+
+            bool disposeRunners = TestPackage.GetSetting(PackageSettings.DisposeRunners, false);
 
             foreach (ITestEngineRunner runner in _runners)
+            {
                 results.Add(runner.Run(listener, filter));
+                if (disposeRunners) runner.Dispose();
+            }
+            if (disposeRunners) _runners.Clear();
 
             TestEngineResult result = ResultHelper.Merge(results);
 
-            return IsProjectPackage(this.TestPackage)
+            return IsProjectPackage(TestPackage)
                 ? result.MakePackageResult(TestPackage.Name, TestPackage.FullName)
                 : result;
         }
@@ -153,11 +145,27 @@ namespace NUnit.Engine.Runners
                 runner.StopRun(force);
         }
 
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+
+            foreach (var runner in _runners)
+                runner.Dispose();
+
+            _runners.Clear();
+        }
+
         #endregion
+
+        // Exposed for use by tests
+        public IList<ITestEngineRunner> Runners
+        {
+            get { return _runners;  }
+        }
 
         protected virtual ITestEngineRunner CreateRunner(TestPackage package)
         {
-            return Services.TestRunnerFactory.MakeTestRunner(package);
+            return TestRunnerFactory.MakeTestRunner(package);
         }
     }
 }

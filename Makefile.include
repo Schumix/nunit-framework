@@ -66,10 +66,10 @@ programfilesdir = $(pkglibdir)
 programfiles_DATA = $(ASSEMBLY)
 bin_SCRIPTS = $(BINARIES)
 
-programfilesdir = @libdir@/@PACKAGE@
-programfiles_DATA = $(PROGRAMFILES)
 linuxpkgconfigdir = @libdir@/pkgconfig
 linuxpkgconfig_DATA = $(LINUX_PKGCONFIG)
+programfilesdir = @libdir@/@PACKAGE@
+programfiles_DATA = $(PROGRAMFILES)
 
 
 # macros

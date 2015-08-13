@@ -85,11 +85,6 @@ namespace NUnit.Framework.Interfaces
         public readonly static ResultState Inconclusive = new ResultState(TestStatus.Inconclusive);
         
         /// <summary>
-        /// The test was not runnable.
-        /// </summary>
-        public readonly static ResultState NotRunnable = new ResultState(TestStatus.Skipped, "Invalid");
-
-        /// <summary>
         /// The test has been skipped. 
         /// </summary>
         public readonly static ResultState Skipped = new ResultState(TestStatus.Skipped);
@@ -98,6 +93,11 @@ namespace NUnit.Framework.Interfaces
         /// The test has been ignored.
         /// </summary>
         public readonly static ResultState Ignored = new ResultState(TestStatus.Skipped, "Ignored");
+
+        /// <summary>
+        /// The test was skipped because it is explicit
+        /// </summary>
+        public readonly static ResultState Explicit = new ResultState(TestStatus.Skipped, "Explicit");
 
         /// <summary>
         /// The test succeeded
@@ -118,6 +118,11 @@ namespace NUnit.Framework.Interfaces
         /// The test was cancelled by the user
         /// </summary>
         public readonly static ResultState Cancelled = new ResultState(TestStatus.Failed, "Cancelled");
+
+        /// <summary>
+        /// The test was not runnable.
+        /// </summary>
+        public readonly static ResultState NotRunnable = new ResultState(TestStatus.Failed, "Invalid");
 
         /// <summary>
         /// A suite failed because one or more child tests failed or had errors
@@ -150,7 +155,7 @@ namespace NUnit.Framework.Interfaces
         public TestStatus Status { get; private set; }
 
         /// <summary>
-        /// Gets the label under which this test resullt is
+        /// Gets the label under which this test result is
         /// categorized, if any.
         /// </summary>
         public string Label { get; private set; }
@@ -176,6 +181,13 @@ namespace NUnit.Framework.Interfaces
 
         #region Equals Override
 
+        /// <summary>
+        /// Determines whether the specified <see cref="System.Object" />, is equal to this instance.
+        /// </summary>
+        /// <param name="obj">The <see cref="System.Object" /> to compare with this instance.</param>
+        /// <returns>
+        ///   <c>true</c> if the specified <see cref="System.Object" /> is equal to this instance; otherwise, <c>false</c>.
+        /// </returns>
         public override bool Equals(object obj)
         {
             var other = obj as ResultState;
@@ -184,6 +196,12 @@ namespace NUnit.Framework.Interfaces
             return Status.Equals(other.Status) && Label.Equals(other.Label) && Site.Equals(other.Site);
         }
 
+        /// <summary>
+        /// Returns a hash code for this instance.
+        /// </summary>
+        /// <returns>
+        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table. 
+        /// </returns>
         public override int GetHashCode()
         {
             return (int)Status << 8 + (int)Site ^ Label.GetHashCode(); ;
@@ -216,7 +234,7 @@ namespace NUnit.Framework.Interfaces
 
     /// <summary>
     /// The FailureSite enum indicates the stage of a test
-    /// in which an error or failure occured.
+    /// in which an error or failure occurred.
     /// </summary>
     public enum FailureSite
     {

@@ -1,5 +1,5 @@
 // ***********************************************************************
-// Copyright (c) 2008 Charlie Poole
+// Copyright (c) 2008-2015 Charlie Poole
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -35,16 +35,8 @@ namespace NUnit.Framework
     /// and provide them with their arguments.
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited=false)]
-    public class TestCaseAttribute : TestCaseBuilderAttribute, ITestBuilder, ITestCaseData, IImplyFixture
+    public class TestCaseAttribute : NUnitAttribute, ITestBuilder, ITestCaseData, IImplyFixture
     {
-        #region Instance variables
-
-        private object expectedResult;
-        private Type _typeOf;
-        private IPropertyBag properties;
-
-        #endregion
-
         #region Constructors
 
         /// <summary>
@@ -54,12 +46,14 @@ namespace NUnit.Framework
         /// <param name="arguments"></param>
         public TestCaseAttribute(params object[] arguments)
         {
-            this.RunState = RunState.Runnable;
+            RunState = RunState.Runnable;
             
             if (arguments == null)
-                this.Arguments = new object[] { null };
+                Arguments = new object[] { null };
             else
-                this.Arguments = arguments;
+                Arguments = arguments;
+
+            Properties = new PropertyBag();
         }
 
         /// <summary>
@@ -68,8 +62,9 @@ namespace NUnit.Framework
         /// <param name="arg"></param>
         public TestCaseAttribute(object arg)
         {
-            this.RunState = RunState.Runnable;			
-            this.Arguments = new object[] { arg };
+            RunState = RunState.Runnable;			
+            Arguments = new object[] { arg };
+            Properties = new PropertyBag();
         }
 
         /// <summary>
@@ -79,8 +74,9 @@ namespace NUnit.Framework
         /// <param name="arg2"></param>
         public TestCaseAttribute(object arg1, object arg2)
         {
-            this.RunState = RunState.Runnable;			
-            this.Arguments = new object[] { arg1, arg2 };
+            RunState = RunState.Runnable;			
+            Arguments = new object[] { arg1, arg2 };
+            Properties = new PropertyBag();
         }
 
         /// <summary>
@@ -91,18 +87,39 @@ namespace NUnit.Framework
         /// <param name="arg3"></param>
         public TestCaseAttribute(object arg1, object arg2, object arg3)
         {
-            this.RunState = RunState.Runnable;			
-            this.Arguments = new object[] { arg1, arg2, arg3 };
+            RunState = RunState.Runnable;			
+            Arguments = new object[] { arg1, arg2, arg3 };
+            Properties = new PropertyBag();
         }
 
         #endregion
 
-        #region Properties
+        #region ITestData Members
+
+        /// <summary>
+        /// Gets or sets the name of the test.
+        /// </summary>
+        /// <value>The name of the test.</value>
+        public string TestName { get; set; }
+
+        /// <summary>
+        /// Gets or sets the RunState of this test case.
+        /// </summary>
+        public RunState RunState { get; private set; }
 
         /// <summary>
         /// Gets the list of arguments to a test case
         /// </summary>
-        public object[] Arguments { get; private set;  }
+        public object[] Arguments { get; private set; }
+
+        /// <summary>
+        /// Gets the properties of the test case
+        /// </summary>
+        public IPropertyBag Properties { get; private set; }
+
+        #endregion
+
+        #region ITestCaseData Members
 
         /// <summary>
         /// Gets or sets the expected result.
@@ -110,18 +127,23 @@ namespace NUnit.Framework
         /// <value>The result.</value>
         public object ExpectedResult
         {
-            get { return expectedResult; }
-            set 
-            { 
-                expectedResult = value;
+            get { return _expectedResult; }
+            set
+            {
+                _expectedResult = value;
                 HasExpectedResult = true;
             }
         }
+        private object _expectedResult;
 
         /// <summary>
         /// Returns true if the expected result has been set
         /// </summary>
         public bool HasExpectedResult { get; private set; }
+
+        #endregion
+
+        #region Other Properties
 
         /// <summary>
         /// Gets or sets the description.
@@ -147,54 +169,44 @@ namespace NUnit.Framework
         /// </summary>
         public Type TestOf
         {
-            get { return _typeOf; }
+            get { return _testOf; }
             set
             {
-                _typeOf = value;
+                _testOf = value;
                 Properties.Set(PropertyNames.TestOf, value.FullName);
             }
         }
+        private Type _testOf;
 
         /// <summary>
-        /// Gets or sets the name of the test.
+        /// Gets or sets the reason for ignoring the test
         /// </summary>
-        /// <value>The name of the test.</value>
-        public string TestName { get; set; }
-
-        /// <summary>
-        /// Gets or sets the ignored status of the test
-        /// </summary>
-        public bool Ignore 
+        public string Ignore 
         { 
-            get { return this.RunState == RunState.Ignored; }
-            set { this.RunState = value ? RunState.Ignored : RunState.Runnable; } 
+            get { return IgnoreReason; }
+            set { IgnoreReason = value; } 
         }
-        
+
         /// <summary>
         /// Gets or sets a value indicating whether this <see cref="NUnit.Framework.TestCaseAttribute"/> is explicit.
         /// </summary>
         /// <value>
         /// <c>true</c> if explicit; otherwise, <c>false</c>.
         /// </value>
-        public bool Explicit 
-        { 
-            get { return this.RunState == RunState.Explicit; }
-            set { this.RunState = value ? RunState.Explicit : RunState.Runnable; }
+        public bool Explicit
+        {
+            get { return RunState == RunState.Explicit; }
+            set { RunState = value ? RunState.Explicit : RunState.Runnable; }
         }
 
-        /// <summary>
-        /// Gets or sets the RunState of this test case.
-        /// </summary>
-        public RunState RunState { get; private set; }
-        
         /// <summary>
         /// Gets or sets the reason for not running the test.
         /// </summary>
         /// <value>The reason.</value>
         public string Reason 
         { 
-            get { return this.Properties.Get(PropertyNames.SkipReason) as string; }
-            set { this.Properties.Set(PropertyNames.SkipReason, value); }
+            get { return Properties.Get(PropertyNames.SkipReason) as string; }
+            set { Properties.Set(PropertyNames.SkipReason, value); }
         }
 
         /// <summary>
@@ -204,16 +216,28 @@ namespace NUnit.Framework
         /// <value>The ignore reason.</value>
         public string IgnoreReason
         {
-            get { return this.Reason; }
+            get { return Reason; }
             set
             {
-                this.RunState = RunState.Ignored;
-                this.Reason = value;
+                RunState = RunState.Ignored;
+                Reason = value;
             }
         }
+        
+#if !PORTABLE
+        /// <summary>
+        /// Comma-delimited list of platforms to run the test for
+        /// </summary>
+        public string IncludePlatform { get; set; }
 
         /// <summary>
-        /// Gets and sets the category for this fixture.
+        /// Comma-delimited list of platforms to not run the test for
+        /// </summary>
+        public string ExcludePlatform { get; set; }
+#endif
+
+        /// <summary>
+        /// Gets and sets the category for this test case.
         /// May be a comma-separated list of categories.
         /// </summary>
         public string Category
@@ -226,35 +250,28 @@ namespace NUnit.Framework
             }
         }
  
-        /// <summary>
-        /// NYI
-        /// </summary>
-        public IPropertyBag Properties
-        {
-            get
-            {
-                if (properties == null)
-                    properties = new PropertyBag();
-
-                return properties;
-            }
-        }
-
         #endregion
 
         #region Helper Methods
 
-        private ParameterSet GetParametersForTestCase(MethodInfo method)
+        private TestCaseParameters GetParametersForTestCase(MethodInfo method)
         {
-            ParameterSet parms;
+            TestCaseParameters parms;
 
             try
             {
+#if NETCF
+                var tmethod = method.MakeGenericMethodEx(Arguments);
+                if (tmethod == null)
+                    throw new NotSupportedException("Cannot determine generic types from probing");
+                method = tmethod;
+#endif
+
                 ParameterInfo[] parameters = method.GetParameters();
                 int argsNeeded = parameters.Length;
                 int argsProvided = Arguments.Length;
 
-                parms = new ParameterSet(this);
+                parms = new TestCaseParameters(this);
 
                 // Special handling for params arguments
                 if (argsNeeded > 0 && argsProvided >= argsNeeded - 1)
@@ -311,7 +328,7 @@ namespace NUnit.Framework
             }
             catch (Exception ex)
             {
-                parms = new ParameterSet(ex);
+                parms = new TestCaseParameters(ex);
             }
 
             return parms;
@@ -342,13 +359,13 @@ namespace NUnit.Framework
 
                 if (targetType.IsAssignableFrom(arg.GetType()))
                     continue;
-
+#if !PORTABLE
                 if (arg is DBNull)
                 {
                     arglist[i] = null;
                     continue;
                 }
-
+#endif
                 bool convert = false;
 
                 if (targetType == typeof(short) || targetType == typeof(byte) || targetType == typeof(sbyte))
@@ -377,7 +394,23 @@ namespace NUnit.Framework
         /// <returns>One or more TestMethods</returns>
         public IEnumerable<TestMethod> BuildFrom(MethodInfo method, Test suite)
         {
-            return new TestMethod[] { new NUnitTestCaseBuilder().BuildTestMethod(method, suite, GetParametersForTestCase(method)) };
+            TestMethod test = new NUnitTestCaseBuilder().BuildTestMethod(method, suite, GetParametersForTestCase(method));
+            
+#if !PORTABLE
+            if (test.RunState != RunState.NotRunnable &&
+                test.RunState != RunState.Ignored)
+            {
+                PlatformHelper platformHelper = new PlatformHelper();
+                
+                if (!platformHelper.IsPlatformSupported(this))
+                {
+                    test.RunState = RunState.Skipped;
+                    test.Properties.Add(PropertyNames.SkipReason, platformHelper.Reason);
+                }
+            }
+#endif
+
+            yield return test;
         }
 
         #endregion

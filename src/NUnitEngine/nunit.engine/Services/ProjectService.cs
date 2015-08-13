@@ -1,5 +1,5 @@
 // ***********************************************************************
-// Copyright (c) 2008 Charlie Poole
+// Copyright (c) 2008-2014 Charlie Poole
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -21,207 +21,98 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
 
-using System;
-using System.IO;
+using System.Collections.Generic;
+using NUnit.Common;
+using Mono.Addins;
+using NUnit.Engine.Extensibility;
 
 namespace NUnit.Engine.Services
 {
     /// <summary>
     /// Summary description for ProjectService.
     /// </summary>
-    public class ProjectService : IProjectLoader, IService
+    public class ProjectService : Service, IProjectService
     {
         /// <summary>
-        /// Seed used to generate names for new projects
+        /// List of all installed ProjectLoaders
         /// </summary>
-        //private int projectSeed = 0;
+        IList<IProjectLoader> _loaders = new List<IProjectLoader>();
 
-        /// <summary>
-        /// The extension used for test projects
-        /// </summary>
-        //private static readonly string nunitExtension = ".nunit";
+        #region IProjectService Members
 
-        /// <summary>
-        /// Array of all installed ProjectLoaders
-        /// </summary>
-        IProjectLoader[] loaders = new IProjectLoader[] 
+        public bool CanLoadFrom(string path)
         {
-            new NUnitProjectLoader(),
-            //new VisualStudioLoader()
-        };
-
-        #region Instance Methods
-
-        public TestPackage MakeTestPackage(IProject project)
-        {
-            return MakeTestPackage(project, null);
-        }
-
-        public TestPackage MakeTestPackage(IProject project, string configName)
-        {
-            TestPackage package = new TestPackage(project.ProjectPath);
-
-            if (project.Configs.Count == 0)
-                return package;
-
-            foreach (string assembly in project.ActiveConfig.Assemblies)
-                package.Add(assembly);
-
-            return package;
-        }
-
-        ///// <summary>
-        ///// Creates a project to wrap a list of assemblies
-        ///// </summary>
-        //public IProject WrapAssemblies( string[] assemblies )
-        //{
-        //    // if only one assembly is passed in then the configuration file
-        //    // should follow the name of the assembly. This will only happen
-        //    // if the LoadAssembly method is called. Currently the console ui
-        //    // does not differentiate between having one or multiple assemblies
-        //    // passed in.
-        //    if ( assemblies.Length == 1)
-        //        return WrapAssembly(assemblies[0]);
-
-
-        //    NUnitProject project = ServiceContext.ProjectService.EmptyProject();
-        //    ProjectConfig config = new ProjectConfig( "Default" );
-        //    foreach( string assembly in assemblies )
-        //    {
-        //        string fullPath = Path.GetFullPath( assembly );
-
-        //        if ( !File.Exists( fullPath ) )
-        //            throw new FileNotFoundException( string.Format( "Assembly not found: {0}", fullPath ) );
-                
-        //        config.Assemblies.Add( fullPath );
-        //    }
-
-        //    project.Configs.Add( config );
-
-        //    // TODO: Deduce application base, and provide a
-        //    // better value for loadpath and project path
-        //    // analagous to how new projects are handled
-        //    string basePath = Path.GetDirectoryName( Path.GetFullPath( assemblies[0] ) );
-        //    project.ProjectPath = Path.Combine( basePath, project.Name + ".nunit" );
-
-        //    project.IsDirty = true;
-
-        //    return project;
-        //}
-
-        ///// <summary>
-        ///// Creates a project to wrap an assembly
-        ///// </summary>
-        //public IProject WrapAssembly( string assemblyPath )
-        //{
-        //    if ( !File.Exists( assemblyPath ) )
-        //        throw new FileNotFoundException( string.Format( "Assembly not found: {0}", assemblyPath ) );
-
-        //    string fullPath = Path.GetFullPath( assemblyPath );
-
-        //    NUnitProject project = new NUnitProject( fullPath );
-            
-        //    ProjectConfig config = new ProjectConfig( "Default" );
-        //    config.Assemblies.Add( fullPath );
-        //    project.Configs.Add( config );
-
-        //    project.IsAssemblyWrapper = true;
-        //    project.IsDirty = false;
-
-        //    return project;
-        //}
-
-        //public string GenerateProjectName()
-        //{
-        //    return string.Format( "Project{0}", ++projectSeed );
-        //}
-
-        //public IProject EmptyProject()
-        //{
-        //    return new NUnitProject( GenerateProjectName() );
-        //}
-
-        //public IProject NewProject()
-        //{
-        //    NUnitProject project = EmptyProject();
-
-        //    project.Configs.Add( "Debug" );
-        //    project.Configs.Add( "Release" );
-        //    project.IsDirty = false;
-
-        //    return project;
-        //}
-
-        //public void SaveProject( IProject project )
-        //{
-        //    project.Save();
-        //}
-        #endregion
-
-        #region IProjectLoader Members
-
-        public bool IsProjectFile(string path)
-        {
-            foreach( IProjectLoader loader in loaders )
-                if ( loader.IsProjectFile(path) )
+            foreach (IProjectLoader loader in _loaders)
+                if (loader.CanLoadFrom(path))
                     return true;
 
             return false;
         }
 
-        public IProject LoadProject(string path)
-        {
-            foreach( IProjectLoader loader in loaders )
-            {
-                if ( loader.IsProjectFile( path ) )
-                    return loader.LoadProject( path );
-            }
-
-            return null;
-        }
-
         /// <summary>
-        /// Expands a TestPackages based on a known project format,
-        /// creating a subpackage for each assembly. The FilePath
-        /// of hte package must be checked to ensure that it is
+        /// Expands a TestPackage based on a known project format, populating it
+        /// with the project contents and any settings the project provides. 
+        /// Note that the package file path must be checked to ensure that it is
         /// a known project format before calling this method.
         /// </summary>
         /// <param name="package">The TestPackage to be expanded</param>
         public void ExpandProjectPackage(TestPackage package)
         {
-            IProject project = LoadProject(package.FullName);
+            Guard.ArgumentNotNull(package, "package");
+            Guard.ArgumentValid(package.SubPackages.Count == 0, "Package is already expanded", "package");
 
-            string configName = package.GetSetting(RunnerSettings.ActiveConfig, string.Empty); // Need RunnerSetting
-            IProjectConfig config = configName != string.Empty
-                ? project.Configs[configName]
-                : project.ActiveConfig;
+            string path = package.FullName;
+            IProject project = LoadFrom(path);
+            Guard.ArgumentValid(project != null, "Unable to load project " + path, "package");
 
-            foreach (string key in config.Settings.Keys)
-                package.Settings[key] = config.Settings[key];
+            string configName = package.GetSetting(PackageSettings.ActiveConfig, (string)null); // Need RunnerSetting
+            TestPackage tempPackage = project.GetTestPackage(configName);
 
-            foreach (string assembly in config.Assemblies)
-                package.Add(assembly);
+            // The original package held overrides, so don't change them, but
+            // do apply any settings specified within the project itself.
+            foreach (string key in tempPackage.Settings.Keys)
+                if (!package.Settings.ContainsKey(key)) // Don't override settings from command line
+                    package.Settings[key] = tempPackage.Settings[key];
+
+            foreach (var subPackage in tempPackage.SubPackages)
+                package.AddSubPackage(subPackage);
         }
 
         #endregion
 
-        #region IService Members
+        #region Service Overrides
 
-        private ServiceContext services;
-        public ServiceContext ServiceContext
+        public override void StartService()
         {
-            get { return services; }
-            set { services = value; }
+            if (Status == ServiceStatus.Stopped)
+            {
+                try
+                {
+                    foreach (IProjectLoader loader in AddinManager.GetExtensionObjects<IProjectLoader>())
+                        _loaders.Add(loader);
+
+                    Status = ServiceStatus.Started;
+                }
+                catch
+                {
+                    // TODO: We should really just ignore any addin that doesn't load
+                    Status = ServiceStatus.Error;
+                    throw;
+                }
+            }
         }
 
-        public void InitializeService()
-        {
-            // TODO:  Add ProjectLoader.InitializeService implementation
-        }
+        #endregion
 
-        public void UnloadService()
+        #region Helper Methods
+
+        private IProject LoadFrom(string path)
         {
-            // TODO:  Add ProjectLoader.UnloadService implementation
+            foreach (IProjectLoader loader in _loaders)
+                if (loader.CanLoadFrom(path))
+                    return loader.LoadFrom(path);
+
+            return null;
         }
 
         #endregion

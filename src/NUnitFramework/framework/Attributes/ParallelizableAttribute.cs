@@ -22,6 +22,7 @@
 // ***********************************************************************
 
 using System;
+using NUnit.Framework.Interfaces;
 using NUnit.Framework.Internal;
 
 namespace NUnit.Framework
@@ -30,14 +31,9 @@ namespace NUnit.Framework
     /// ParallelizableAttribute is used to mark tests that may be run in parallel.
     /// </summary>
     [AttributeUsage( AttributeTargets.Assembly | AttributeTargets.Class | AttributeTargets.Method, AllowMultiple=false, Inherited=false )]
-    public sealed class ParallelizableAttribute : PropertyAttribute
-#if !NUNITLITE
-        , IApplyToContext
-#endif
+    public sealed class ParallelizableAttribute : PropertyAttribute, IApplyToContext
     {
-#if !NUNITLITE
         private ParallelScope _scope;
-#endif
 
         /// <summary>
         /// Construct a ParallelizableAttribute using default ParallelScope.Self.
@@ -50,13 +46,11 @@ namespace NUnit.Framework
         /// <param name="scope">The ParallelScope associated with this attribute.</param>
         public ParallelizableAttribute(ParallelScope scope) : base()
         {
-#if !NUNITLITE
             _scope = scope;
-#endif
+
             Properties.Add(PropertyNames.ParallelScope, scope);
         }
 
-#if !NUNITLITE
         #region IApplyToContext Interface
 
         /// <summary>
@@ -71,6 +65,5 @@ namespace NUnit.Framework
         }
 
         #endregion
-#endif
     }
 }

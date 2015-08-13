@@ -106,7 +106,7 @@ namespace NUnit.Framework.Constraints
         /// <returns>A ConstraintResult</returns>
         public virtual ConstraintResult ApplyTo<TActual>(ActualValueDelegate<TActual> del)
         {
-#if NET_4_0 || NET_4_5
+#if NET_4_0 || NET_4_5 || PORTABLE
             if (AsyncInvocationRegion.IsAsyncOperation(del))
                 using (var region = AsyncInvocationRegion.Create(del))
                     return ApplyTo(region.WaitForPendingOperationsToComplete(del()));
@@ -114,6 +114,7 @@ namespace NUnit.Framework.Constraints
             return ApplyTo(del());
         }
 
+#pragma warning disable 3006
         /// <summary>
         /// Test whether the constraint is satisfied by a given reference.
         /// The default implementation simply dereferences the value but
@@ -125,6 +126,7 @@ namespace NUnit.Framework.Constraints
         {
             return ApplyTo(actual);
         }
+#pragma warning restore 3006
 
         #endregion
 
@@ -266,6 +268,7 @@ namespace NUnit.Framework.Constraints
 
         #region After Modifier
 
+#if !PORTABLE
         /// <summary>
         /// Returns a DelayedConstraint with the specified delay time.
         /// </summary>
@@ -292,6 +295,7 @@ namespace NUnit.Framework.Constraints
                 delayInMilliseconds,
                 pollingInterval);
         }
+#endif
 
         #endregion
 

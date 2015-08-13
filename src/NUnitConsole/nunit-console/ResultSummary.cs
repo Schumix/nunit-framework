@@ -1,5 +1,5 @@
 ﻿// ***********************************************************************
-// Copyright (c) 2007 Charlie Poole
+// Copyright (c) 2014 Charlie Poole
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -34,208 +34,170 @@ namespace NUnit.ConsoleRunner
     /// </summary>
     public class ResultSummary
     {
-        private int resultCount = 0;
-        private int testsRun = 0;
-        private int failureCount = 0;
-        private int errorCount = 0;
-        private int successCount = 0;
-        private int inconclusiveCount = 0;
-        private int skipCount = 0;
-        private int ignoreCount = 0;
-        private int notRunnable = 0;
-
-        private DateTime startTime = DateTime.MinValue;
-        private DateTime endTime = DateTime.MaxValue;
-        private double duration = 0.0d;
-        private string name;
-
-        public ResultSummary() { }
+        #region Constructor
 
         public ResultSummary(XmlNode result)
         {
             if (result.Name != "test-run")
                 throw new InvalidOperationException("Expected <test-run> as top-level element but was <" + result.Name + ">");
 
-            name = result.GetAttribute("name");
-            duration = result.GetAttribute("duration", 0.0);
-            startTime = result.GetAttribute("start-time", DateTime.MinValue);
-            endTime = result.GetAttribute("end-time", DateTime.MaxValue);
+            InitializeCounters();
 
             Summarize(result);
         }
 
-        private void Summarize(XmlNode node)
-        {
-            switch (node.Name)
-            {
-                case "test-case":
-                    resultCount++;
+        #endregion
 
-                    string outcome = node.GetAttribute("result");
-                    string label = node.GetAttribute("label");
-                    if (label != null)
-                        outcome = label;
-
-                    switch (outcome)
-                    {
-                        case "Passed":
-                            successCount++;
-                            testsRun++;
-                            break;
-                        case "Failed":
-                            failureCount++;
-                            testsRun++;
-                            break;
-                        case "Error":
-                        case "Cancelled":
-                            errorCount++;
-                            testsRun++;
-                            break;
-                        case "Inconclusive":
-                            inconclusiveCount++;
-                            testsRun++;
-                            break;
-                        case "NotRunnable":
-                            notRunnable++;
-                            //errorCount++;
-                            break;
-                        case "Ignored":
-                            ignoreCount++;
-                            break;
-                        case "Skipped":
-                        default:
-                            skipCount++;
-                            break;
-                    }
-                    break;
-
-                //case "test-suite":
-                //case "test-fixture":
-                //case "method-group":
-                default:
-                    foreach (XmlNode childResult in node.ChildNodes)
-                        Summarize(childResult);
-                    break;
-            }
-        }
-
-        public string Name
-        {
-            get { return name; }
-        }
-
-        public bool Success
-        {
-            get { return failureCount == 0; }
-        }
+        #region Properties
 
         /// <summary>
-        /// Returns the number of test cases for which results
+        /// Gets the number of test cases for which results
         /// have been summarized. Any tests excluded by use of
         /// Category or Explicit attributes are not counted.
         /// </summary>
-        public int ResultCount
+        public int TestCount { get; private set; }
+
+        /// <summary>
+        /// Returns the number of test cases actually run.
+        /// </summary>
+        public int RunCount 
         {
-            get { return resultCount; }
+            get { return PassCount + FailureCount + ErrorCount + InconclusiveCount;  }
         }
 
         /// <summary>
-        /// Returns the number of test cases actually run, which
-        /// is the same as ResultCount, less any Skipped, Ignored
-        /// or NonRunnable tests.
+        /// Returns the number of test cases not run for any reason.
         /// </summary>
-        public int TestsRun
+        public int NotRunCount
         {
-            get { return testsRun; }
+            get { return IgnoreCount + ExplicitCount + InvalidCount + SkipCount;  }
         }
 
         /// <summary>
-        /// Returns the number of tests that passed
+        /// Gets the count of passed tests
         /// </summary>
-        public int Passed
-        {
-            get { return successCount; }
-        }
+        public int PassCount { get; private set; }
+
+        /// <summary>
+        /// Gets the count of failed tests, excluding errors and invalid tests
+        /// </summary>
+        public int FailureCount { get; private set; }
 
         /// <summary>
         /// Returns the number of test cases that had an error.
         /// </summary>
-        public int Errors
-        {
-            get { return errorCount; }
-        }
+        public int ErrorCount { get; private set; }
 
         /// <summary>
-        /// Returns the number of test cases that failed.
+        /// Gets the count of inconclusive tests
         /// </summary>
-        public int Failures
-        {
-            get { return failureCount; }
-        }
-
-        /// <summary>
-        /// Returns the number of test cases that failed.
-        /// </summary>
-        public int Inconclusive
-        {
-            get { return inconclusiveCount; }
-        }
+        public int InconclusiveCount { get; private set; }
 
         /// <summary>
         /// Returns the number of test cases that were not runnable
         /// due to errors in the signature of the class or method.
         /// Such tests are also counted as Errors.
         /// </summary>
-        public int NotRunnable
-        {
-            get { return notRunnable; }
-        }
+        public int InvalidCount { get; private set; }
 
         /// <summary>
-        /// Returns the number of test cases that were skipped.
+        /// Gets the count of skipped tests, excluding ignored and explicit tests
         /// </summary>
-        public int Skipped
-        {
-            get { return skipCount; }
-        }
-
-        public int Ignored
-        {
-            get { return ignoreCount; }
-        }
+        public int SkipCount { get; private set; }
 
         /// <summary>
-        /// Gets the start time of the test run.
+        /// Gets the count of ignored tests
         /// </summary>
-        public DateTime StartTime
-        {
-            get { return startTime; }
-        }
+        public int IgnoreCount { get; private set; }
 
         /// <summary>
-        /// Gets the end time of the test run.
+        /// Gets the count of tests not run because the are Explicit
         /// </summary>
-        public DateTime EndTime
-        {
-            get { return endTime; }
-        }
+        public int ExplicitCount { get; private set; }
 
         /// <summary>
-        /// Gets the duration of the test run.
+        /// Gets the count of invalid assemblies
         /// </summary>
-        public double Duration
+        public int InvalidAssemblies { get; private set; }
+
+        #endregion
+
+        #region Helper Methods
+
+        private void InitializeCounters()
         {
-            get { return duration; }
+            TestCount = 0;
+            PassCount = 0;
+            FailureCount = 0;
+            ErrorCount = 0;
+            InconclusiveCount = 0;
+            SkipCount = 0;
+            IgnoreCount = 0;
+            ExplicitCount = 0;
+            InvalidCount = 0;
+            InvalidAssemblies = 0;
         }
 
-        public int TestsNotRun
+        private void Summarize(XmlNode node)
         {
-            get { return skipCount + ignoreCount + notRunnable; }
+            string type = node.GetAttribute("type");
+            string status = node.GetAttribute("result");
+            string label = node.GetAttribute("label");
+
+            switch (node.Name)
+            {
+                case "test-case":
+                    TestCount++;
+
+                    switch (status)
+                    {
+                        case "Passed":
+                            PassCount++;
+                            break;
+                        case "Failed":
+                            if (label == null)
+                                FailureCount++;
+                            else if (label == "Invalid")
+                                InvalidCount++;
+                            else
+                                ErrorCount++;
+                            break;
+                        case "Inconclusive":
+                            InconclusiveCount++;
+                            break;
+                        case "Skipped":
+                            if (label == "Ignored")
+                                IgnoreCount++;
+                            else if (label == "Explicit")
+                                ExplicitCount++;
+                            else
+                                SkipCount++;
+                            break;
+                        default:
+                            SkipCount++;
+                            break;
+                    }
+                    break;
+
+                case "test-suite":
+                    if (type == "Assembly" && status == "Failed" && label == "Invalid")
+                        InvalidAssemblies++;
+
+                    Summarize(node.ChildNodes);
+                    break;
+
+                case "test-run":
+                    Summarize(node.ChildNodes);
+                    break;
+            }
         }
 
-        public int ErrorsAndFailures
+        private void Summarize(XmlNodeList nodes)
         {
-            get { return errorCount + failureCount; }
+            foreach (XmlNode childResult in nodes)
+                Summarize(childResult);
         }
+
+        #endregion
     }
 }

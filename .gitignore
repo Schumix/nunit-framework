@@ -14,6 +14,7 @@ x64/
 build/
 [Bb]in/
 [Oo]bj/
+.vs/
 
 # Enable "build/" folder in the NuGet Packages folder since NuGet packages use it for MSBuild targets
 !packages/*/build/
@@ -168,11 +169,13 @@ StyleCop.Cache
 local.settings.include
 InternalTrace.txt
 TestResult.xml
+testCaseCollection.xml
 deploy
 lib
 test-results
 package
-deploy
+images
+MockAssemblyResult.xml
 
 # http://www.gnu.org/software/automake
 
@@ -189,3 +192,4 @@ Makefile.in
 /install-sh
 /missing
 /config.status
+

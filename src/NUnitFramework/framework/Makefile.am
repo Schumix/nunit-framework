@@ -5,7 +5,7 @@ EXTRA_DIST =
 
 if ENABLE_DEBUG
 ASSEMBLY_COMPILER_COMMAND = dmcs
-ASSEMBLY_COMPILER_FLAGS =  -noconfig -codepage:utf8 -warn:4 -optimize- "-nowarn:1699,414,3006,219" -debug "-define:TRACE;DEBUG;NUNIT_FRAMEWORK;NET_4_0" "-keyfile:nunit.snk"
+ASSEMBLY_COMPILER_FLAGS =  -noconfig -codepage:utf8 -warn:4 -optimize- "-nowarn:1699,414,219" -debug "-define:TRACE;DEBUG;NUNIT_FRAMEWORK;NET_4_0" "-keyfile:nunit.snk"
 ASSEMBLY = ../../bin/Debug/net-4.0/nunit.framework.dll
 ASSEMBLY_MDB = $(ASSEMBLY).mdb
 COMPILE_TARGET = library
@@ -19,7 +19,7 @@ endif
 
 if ENABLE_RELEASE
 ASSEMBLY_COMPILER_COMMAND = dmcs
-ASSEMBLY_COMPILER_FLAGS =  -noconfig -codepage:utf8 -warn:4 -optimize+ "-nowarn:414,3006,219" "-define:TRACE;NUNIT_FRAMEWORK;NET_4_0" "-keyfile:nunit.snk"
+ASSEMBLY_COMPILER_FLAGS =  -noconfig -codepage:utf8 -warn:4 -optimize+ "-nowarn:414,219" "-define:TRACE;NUNIT_FRAMEWORK;NET_4_0" "-keyfile:nunit.snk"
 ASSEMBLY = ../../bin/Release/net-4.0/nunit.framework.dll
 ASSEMBLY_MDB = 
 COMPILE_TARGET = library
@@ -47,36 +47,41 @@ all: $(ASSEMBLY) $(PROGRAMFILES) $(LINUX_PKGCONFIG)
 FILES = \
 	../../CommonAssemblyInfo.cs \
 	../../Common/nunit/AssemblyHelper.cs \
+	../../Common/nunit/Env.cs \
 	../../Common/nunit/Guard.cs \
 	../../Common/nunit/Logging/ILogger.cs \
 	../../Common/nunit/Logging/InternalTrace.cs \
 	../../Common/nunit/Logging/InternalTraceLevel.cs \
 	../../Common/nunit/Logging/InternalTraceWriter.cs \
 	../../Common/nunit/Logging/Logger.cs \
+	../../Common/nunit/PackageSettings.cs \
 	../FrameworkVersion.cs \
 	ActionTargets.cs \
-	Api/AbstractTestAssemblyRunner.cs \
 	Api/DefaultTestAssemblyBuilder.cs \
-	Api/DriverSettings.cs \
 	Api/FrameworkController.cs \
 	Api/ITestAssemblyBuilder.cs \
 	Api/ITestAssemblyRunner.cs \
 	Api/NUnitTestAssemblyRunner.cs \
-	AssemblyInfo.cs \
+	Assert.Comparisons.cs \
+	Assert.Conditions.cs \
 	Assert.cs \
+	Assert.Equality.cs \
+	Assert.Exceptions.cs \
+	Assert.That.cs \
+	Assert.Types.cs \
 	AssertionHelper.cs \
 	Assume.cs \
+	Attributes/ApartmentAttribute.cs \
 	Attributes/AuthorAttribute.cs \
 	Attributes/CategoryAttribute.cs \
 	Attributes/CombinatorialAttribute.cs \
 	Attributes/CombiningStrategyAttribute.cs \
+	Attributes/LevelOfParallelismAttribute.cs \
 	Attributes/OneTimeSetUpAttribute.cs \
 	Attributes/OneTimeTearDownAttribute.cs \
+	Attributes/RetryAttribute.cs \
 	Attributes/TestActionAttribute.cs \
-	Attributes/TestCaseBuilderAttribute.cs \
-	Attributes/FixtureBuilderAttribute.cs \
 	Attributes/ParallelizableAttribute.cs \
-	Attributes/LevelOfParallelizationAttribute.cs \
 	Attributes/CultureAttribute.cs \
 	Attributes/DataAttribute.cs \
 	Attributes/DatapointAttribute.cs \
@@ -109,6 +114,7 @@ FILES = \
 	Attributes/TestCaseSourceAttribute.cs \
 	Attributes/TestFixtureAttribute.cs \
 	Attributes/TestFixtureSetUpAttribute.cs \
+	Attributes/TestFixtureSourceAttribute.cs \
 	Attributes/TestFixtureTearDownAttribute.cs \
 	Attributes/TestOfAttribute.cs \
 	Attributes/TheoryAttribute.cs \
@@ -116,6 +122,11 @@ FILES = \
 	Attributes/ValuesAttribute.cs \
 	Attributes/ValueSourceAttribute.cs \
 	CollectionAssert.cs \
+	Compatibility/Activator.cs \
+	Compatibility/AttributeHelper.cs \
+	Compatibility/ICallbackEventHandler.cs \
+	Compatibility/MarshalByRefObject.cs \
+	Compatibility/Path.cs \
 	Compatibility/SerializableAttribute.cs \
 	Compatibility/Stopwatch.cs \
 	Constraints/AllItemsConstraint.cs \
@@ -131,6 +142,7 @@ FILES = \
 	Constraints/CollectionEquivalentConstraint.cs \
 	Constraints/CollectionItemsEqualConstraint.cs \
 	Constraints/CollectionOrderedConstraint.cs \
+	Constraints/CollectionSupersetConstraint.cs \
 	Constraints/CollectionSubsetConstraint.cs \
 	Constraints/CollectionTally.cs \
 	Constraints/ComparisonAdapter.cs \
@@ -142,6 +154,8 @@ FILES = \
 	Constraints/ConstraintResult.cs \
 	Constraints/ContainsConstraint.cs \
 	Constraints/DelayedConstraint.cs \
+	Constraints/DictionaryContainsKeyConstraint.cs \
+	Constraints/DictionaryContainsValueConstraint.cs \
 	Constraints/EmptyCollectionConstraint.cs \
 	Constraints/EmptyConstraint.cs \
 	Constraints/EmptyDirectoryConstraint.cs \
@@ -216,14 +230,15 @@ FILES = \
 	Contains.cs \
 	DirectoryAssert.cs \
 	Does.cs \
-	Env.cs \
 	Exceptions/AssertionException.cs \
 	Exceptions/IgnoreException.cs \
 	Exceptions/InconclusiveException.cs \
 	Exceptions/ResultStateException.cs \
 	Exceptions/SuccessException.cs \
+	Interfaces/IApplyToContext.cs \
+	Interfaces/IApplyToTest.cs \
 	Interfaces/ICombiningStrategy.cs \
-	Interfaces/ICommandDecorator.cs \
+	Interfaces/ICommandWrapper.cs \
 	Interfaces/IFixtureBuilder.cs \
 	Interfaces/IImplyFixture.cs \
 	Interfaces/IParameterDataProvider.cs \
@@ -238,14 +253,16 @@ FILES = \
 	Interfaces/ITestBuilder.cs \
 	Interfaces/ITestCaseBuilder.cs \
 	Interfaces/ITestCaseData.cs \
+	Interfaces/ITestData.cs \
 	Interfaces/ITestFilter.cs \
+	Interfaces/ITestFixtureData.cs \
 	Interfaces/ITestListener.cs \
 	Interfaces/ITestResult.cs \
 	Interfaces/IXmlNodeBuilder.cs \
 	Interfaces/ResultState.cs \
 	Interfaces/RunState.cs \
 	Interfaces/TestStatus.cs \
-	Interfaces/XmlNode.cs \
+	Interfaces/TNode.cs \
 	Internal/ActionsHelper.cs \
 	Internal/AsyncInvocationRegion.cs \
 	Internal/Builders/CombinatorialStrategy.cs \
@@ -265,7 +282,6 @@ FILES = \
 	Internal/Commands/MaxTimeCommand.cs \
 	Internal/Commands/OneTimeSetUpCommand.cs \
 	Internal/Commands/OneTimeTearDownCommand.cs \
-	Internal/Commands/RepeatedTestCommand.cs \
 	Internal/Commands/SetUpTearDownCommand.cs \
 	Internal/Commands/SetUpTearDownItem.cs \
 	Internal/Commands/SkipCommand.cs \
@@ -294,33 +310,35 @@ FILES = \
 	Internal/Execution/WorkItemState.cs \
 	Internal/Execution/WorkShift.cs \
 	Internal/Filters/AndFilter.cs \
-	Internal/Filters/CategoryExpression.cs \
 	Internal/Filters/CategoryFilter.cs \
 	Internal/Filters/IdFilter.cs \
 	Internal/Filters/NotFilter.cs \
 	Internal/Filters/OrFilter.cs \
 	Internal/Filters/SimpleNameFilter.cs \
 	Internal/Filters/ValueMatchFilter.cs \
-	Internal/IApplyToContext.cs \
-	Internal/IApplyToTest.cs \
+	Internal/GenericMethodHelper.cs \
+	Internal/InvalidDataSourceException.cs \
 	Internal/InvalidTestFixtureException.cs \
 	Internal/MethodHelper.cs \
+	Internal/NetCFExtensions.cs \
 	Internal/NUnitException.cs \
 	Internal/OSPlatform.cs \
-	Internal/ParameterSet.cs \
 	Internal/PlatformHelper.cs \
 	Internal/PropertyBag.cs \
 	Internal/PropertyNames.cs \
-	Internal/RandomGenerator.cs \
 	Internal/Randomizer.cs \
 	Internal/Reflect.cs \
 	Internal/Results/TestResult.cs \
 	Internal/RuntimeFramework.cs \
 	Internal/StackFilter.cs \
 	Internal/StringUtil.cs \
+	Internal/TestCaseParameters.cs \
 	Internal/TestExecutionContext.cs \
+	Internal/TestExecutionStatus.cs \
 	Internal/TestFilter.cs \
+	Internal/TestFixtureParameters.cs \
 	Internal/TestListener.cs \
+	Internal/TestParameters.cs \
 	Internal/TestProgressReporter.cs \
 	Internal/Tests/ParameterizedFixtureSuite.cs \
 	Internal/Tests/ParameterizedMethodSuite.cs \
@@ -337,11 +355,12 @@ FILES = \
 	Iz.cs \
 	List.cs \
 	ListMapper.cs \
-	MessageMatch.cs \
+	Properties/AssemblyInfo.cs \
 	SpecialValue.cs \
 	StringAssert.cs \
 	TestCaseData.cs \
 	TestContext.cs \
+	TestFixtureData.cs \
 	Throws.cs \
 	Internal/Results/TestCaseResult.cs \
 	Internal/Results/TestSuiteResult.cs \

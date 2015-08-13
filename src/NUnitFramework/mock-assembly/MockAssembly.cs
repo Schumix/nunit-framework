@@ -1,11 +1,33 @@
-// ****************************************************************
-// This is free software licensed under the NUnit license. You
-// may obtain a copy of the license as well as information regarding
-// copyright ownership at http://nunit.org.
-// ****************************************************************
+// ***********************************************************************
+// Copyright (c) 2014 Charlie Poole
+//
+// Permission is hereby granted, free of charge, to any person obtaining
+// a copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to
+// the following conditions:
+// 
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// ***********************************************************************
+
 using System;
+using NUnit.Common;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
+#if !SILVERLIGHT && !PORTABLE
+using NUnitLite.Runner;
+#endif
 
 namespace NUnit.Tests
 {
@@ -16,10 +38,10 @@ namespace NUnit.Tests
         /// </summary>
         public class MockAssembly
         {
-            public static int Classes = 9;
-            public static int NamespaceSuites = 6; // assembly, NUnit, Tests, Assemblies, Singletons, TestAssembly
+            public const int Classes = 9;
+            public const int NamespaceSuites = 6; // assembly, NUnit, Tests, Assemblies, Singletons, TestAssembly
 
-            public static int Tests = MockTestFixture.Tests 
+            public const int Tests = MockTestFixture.Tests 
                         + Singletons.OneTestCase.Tests 
                         + TestAssembly.MockTestFixture.Tests 
                         + IgnoredFixture.Tests
@@ -27,9 +49,11 @@ namespace NUnit.Tests
                         + BadFixture.Tests
                         + FixtureWithTestCases.Tests
                         + ParameterizedFixture.Tests
-                        + GenericFixtureConstants.Tests;
+                        + GenericFixtureConstants.Tests
+                        + CDataTestFixure.Tests
+                        + TestNameEscaping.Tests;
             
-            public static int Suites = MockTestFixture.Suites 
+            public const int Suites = MockTestFixture.Suites 
                         + Singletons.OneTestCase.Suites
                         + TestAssembly.MockTestFixture.Suites 
                         + IgnoredFixture.Suites
@@ -38,30 +62,38 @@ namespace NUnit.Tests
                         + FixtureWithTestCases.Suites
                         + ParameterizedFixture.Suites
                         + GenericFixtureConstants.Suites
+                        + CDataTestFixure.Suites
+                        + TestNameEscaping.Suites
                         + NamespaceSuites;
             
-            public static readonly int Nodes = Tests + Suites;
+            public const int Nodes = Tests + Suites;
             
-            public static int ExplicitFixtures = 1;
-            public static int SuitesRun = Suites - ExplicitFixtures;
+            public const int ExplicitFixtures = 1;
+            public const int SuitesRun = Suites - ExplicitFixtures;
 
-            public static int Ignored = MockTestFixture.Ignored + IgnoredFixture.Tests;
-            public static int Explicit = MockTestFixture.Explicit + ExplicitFixture.Tests;
-            public static int NotRunnable = MockTestFixture.NotRunnable + BadFixture.Tests;
-            public static int NotRun = Ignored + Explicit + NotRunnable;
-            public static int TestsRun = Tests - NotRun;
-            public static int ResultCount = Tests - Explicit;
+            public const int Ignored = MockTestFixture.Ignored + IgnoredFixture.Tests;
+            public const int Explicit = MockTestFixture.Explicit + ExplicitFixture.Tests;
+            public const int Skipped = Ignored + Explicit;
+            public const int NotRun = Ignored + Explicit + NotRunnable;
+            public const int TestsRun = Tests - NotRun;
+            public const int ResultCount = Tests - Explicit;
 
-            public static int Errors = MockTestFixture.Errors;
-            public static int Failures = MockTestFixture.Failures;
-            public static int ErrorsAndFailures = Errors + Failures;
-            public static int Inconclusive = MockTestFixture.Inconclusive;
-            public static int Success = TestsRun - ErrorsAndFailures - Inconclusive;
+            public const int Errors = MockTestFixture.Errors;
+            public const int Failures = MockTestFixture.Failures + CDataTestFixure.Failures;
+            public const int NotRunnable = MockTestFixture.NotRunnable + BadFixture.Tests;
+            public const int ErrorsAndFailures = Errors + Failures + NotRunnable;
+            public const int Inconclusive = MockTestFixture.Inconclusive;
+            public const int Success = TestsRun - Errors - Failures - Inconclusive;
 
-            public static int Categories = MockTestFixture.Categories;
+            public const int Categories = MockTestFixture.Categories;
 
-#if !NETCF && !SILVERLIGHT
-            public static string AssemblyPath = AssemblyHelper.GetAssemblyPath(typeof(MockAssembly).Assembly);
+#if !SILVERLIGHT && !PORTABLE
+            public static readonly string AssemblyPath = AssemblyHelper.GetAssemblyPath(typeof(MockAssembly).Assembly);
+
+            public static void Main(string[] args)
+            {
+                new AutoRun().Execute(args);
+            }
 #endif
         }
 
@@ -74,14 +106,16 @@ namespace NUnit.Tests
 
             public const int Ignored = 1;
             public const int Explicit = 1;
-            public const int NotRunnable = 2;
-            public const int NotRun = Ignored + Explicit + NotRunnable;
+
+            public const int NotRun = Ignored + Explicit;
             public const int TestsRun = Tests - NotRun;
             public const int ResultCount = Tests - Explicit;
 
             public const int Failures = 1;
             public const int Errors = 1;
-            public const int ErrorsAndFailures = Errors + Failures;
+            public const int NotRunnable = 2;
+            public const int ErrorsAndFailures = Errors + Failures + NotRunnable;
+
             public const int Inconclusive = 1;
 
             public const int Categories = 5;
@@ -158,8 +192,8 @@ namespace NUnit.Tests
         [TestFixture]
         public class OneTestCase
         {
-            public static readonly int Tests = 1;
-            public static readonly int Suites = 1;		
+            public const int Tests = 1;
+            public const int Suites = 1;		
 
             [Test]
             public virtual void TestCase() 
@@ -172,8 +206,8 @@ namespace NUnit.Tests
         [TestFixture]
         public class MockTestFixture
         {
-            public static readonly int Tests = 1;
-            public static readonly int Suites = 1;
+            public const int Tests = 1;
+            public const int Suites = 1;
 
             [Test]
             public void MyTest()
@@ -185,8 +219,8 @@ namespace NUnit.Tests
     [TestFixture, Ignore("BECAUSE")]
     public class IgnoredFixture
     {
-        public static readonly int Tests = 3;
-        public static readonly int Suites = 1;
+        public const int Tests = 3;
+        public const int Suites = 1;
 
         [Test]
         public void Test1() { }
@@ -201,9 +235,9 @@ namespace NUnit.Tests
     [TestFixture,Explicit]
     public class ExplicitFixture
     {
-        public static readonly int Tests = 2;
-        public static readonly int Suites = 1;
-        public static readonly int Nodes = Tests + Suites;
+        public const int Tests = 2;
+        public const int Suites = 1;
+        public const int Nodes = Tests + Suites;
 
         [Test]
         public void Test1() { }
@@ -215,8 +249,8 @@ namespace NUnit.Tests
     [TestFixture]
     public class BadFixture
     {
-        public static readonly int Tests = 1;
-        public static readonly int Suites = 1;
+        public const int Tests = 1;
+        public const int Suites = 1;
 
         public BadFixture(int val) { }
 
@@ -227,8 +261,8 @@ namespace NUnit.Tests
     [TestFixture]
     public class FixtureWithTestCases
     {
-        public static readonly int Tests = 4;
-        public static readonly int Suites = 3;
+        public const int Tests = 4;
+        public const int Suites = 3;
         
         [TestCase(2, 2, ExpectedResult=4)]
         [TestCase(9, 11, ExpectedResult=20)]
@@ -248,8 +282,8 @@ namespace NUnit.Tests
     [TestFixture(42)]
     public class ParameterizedFixture
     {
-        public static readonly int Tests = 4;
-        public static readonly int Suites = 3;
+        public const int Tests = 4;
+        public const int Suites = 3;
 
         public ParameterizedFixture(int num) { }
         
@@ -262,8 +296,8 @@ namespace NUnit.Tests
     
     public class GenericFixtureConstants
     {
-        public static readonly int Tests = 4;
-        public static readonly int Suites = 3;
+        public const int Tests = 4;
+        public const int Suites = 3;
     }
     
     [TestFixture(5)]
@@ -277,5 +311,58 @@ namespace NUnit.Tests
         
         [Test]
         public void Test2() { }
+    }
+
+    [TestFixture]
+    public class CDataTestFixure
+    {
+        public const int Tests = 4;
+        public const int Suites = 1;
+        public const int Failures = 2;
+
+        [Test]
+        public void DemonstrateIllegalSequenceInSuccessMessage()
+        {
+            Assert.Pass("Deliberate failure to illustrate ]]> in message ");
+        }
+
+        [Test]
+        public void DemonstrateIllegalSequenceAtEndOfSuccessMessage()
+        {
+            Assert.Pass("The CDATA was: <![CDATA[ My <xml> ]]>");
+        }
+
+        [Test]
+        public void DemonstrateIllegalSequenceInFailureMessage()
+        {
+            Assert.Fail("Deliberate failure to illustrate ]]> in message ");
+        }
+
+        [Test]
+        public void DemonstrateIllegalSequenceAtEndOfFailureMessage()
+        {
+            Assert.Fail("The CDATA was: <![CDATA[ My <xml> ]]>");
+        }
+    }
+
+    [TestFixture]
+    public class TestNameEscaping
+    {
+        public const int Tests = 10;
+        public const int Suites = 2;
+
+        [TestCase("< left bracket")]
+        [TestCase("> right bracket")]
+        [TestCase("'single quote'")]
+        [TestCase("\"double quote\"")]
+        [TestCase("&amp")]
+        public void MustBeEscaped(string str) { }
+
+        [TestCase("< left bracket", TestName = "<")]
+        [TestCase("> right bracket", TestName = ">")]
+        [TestCase("'single quote'", TestName = "'")]
+        [TestCase("double quote", TestName = "\"")]
+        [TestCase("amp", TestName = "&")]
+        public void MustBeEscaped_CustomName(string str) { }
     }
 }

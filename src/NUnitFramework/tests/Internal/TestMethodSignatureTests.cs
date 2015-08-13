@@ -59,6 +59,17 @@ namespace NUnit.Framework.Internal
         }
 
         [Test]
+        public void TestMethodHasAttributesAppliedCorrectlyEvenIfNotRunnable()
+        {
+            var test = TestBuilder.MakeTestCase(fixtureType, "TestMethodWithArgumentsNotProvidedAndExtraAttributes");
+            // NOTE: IgnoreAttribute has no effect, either on RunState or on the reason
+            Assert.That(test.RunState == RunState.NotRunnable);
+            Assert.That(test.Properties.Get(PropertyNames.SkipReason), Is.EqualTo("No arguments were provided"));
+            Assert.That(test.Properties.Get(PropertyNames.Description), Is.EqualTo("My test"));
+            Assert.That(test.Properties.Get(PropertyNames.MaxTime), Is.EqualTo(47));
+        }
+
+        [Test]
         public void TestMethodWithArgumentsProvidedIsRunnable()
         {
             TestAssert.IsRunnable(fixtureType, "TestMethodWithArgumentsProvided");
@@ -184,19 +195,13 @@ namespace NUnit.Framework.Internal
                 Is.EqualTo(TestMethodSignatureFixture.Tests));
             Assert.That(
                 summary.TestsRun,
-                Is.EqualTo(TestMethodSignatureFixture.Runnable));
-            //Assert.That(
-            //    summary.NotRunnable,
-            //    Is.EqualTo(TestMethodSignatureFixture.NotRunnable));
-            //Assert.That(
-            //    summary.Errors,
-            //    Is.EqualTo(TestMethodSignatureFixture.Errors));
+                Is.EqualTo(TestMethodSignatureFixture.Tests));
             Assert.That(
-                summary.Failures,
-                Is.EqualTo(TestMethodSignatureFixture.Failures + TestMethodSignatureFixture.Errors));
+                summary.Failed,
+                Is.EqualTo(TestMethodSignatureFixture.Failures + TestMethodSignatureFixture.Errors + TestMethodSignatureFixture.NotRunnable));
             Assert.That(
-                summary.TestsNotRun,
-                Is.EqualTo(TestMethodSignatureFixture.NotRunnable));
+                summary.Skipped,
+                Is.EqualTo(0));
         }
     }
 }

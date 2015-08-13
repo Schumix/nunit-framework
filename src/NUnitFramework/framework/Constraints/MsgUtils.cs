@@ -31,7 +31,7 @@ namespace NUnit.Framework.Constraints
     /// <summary>
     /// Static methods used in creating messages
     /// </summary>
-    public static class MsgUtils
+    internal static class MsgUtils
     {
         /// <summary>
         /// Static string used when strings are clipped
@@ -88,6 +88,11 @@ namespace NUnit.Framework.Constraints
             if (val is ValueType)
                 return string.Format(Fmt_ValueType, val);
 
+#if NETCF
+            var vi = val as System.Reflection.MethodInfo;
+            if (vi != null && vi.IsGenericMethodDefinition)
+                return string.Format(Fmt_Default, vi.Name + "<>");
+#endif
             return string.Format(Fmt_Default, val);
         }
 

@@ -20,15 +20,14 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
-
 using System.IO;
 
-#if NUNIT_ENGINE
+#if NUNIT_ENGINE || CORE_ENGINE
 namespace NUnit.Engine.Internal
-#elif NUNIT_FRAMEWORK || NUNITLITE
+#elif NUNIT_FRAMEWORK
 namespace NUnit.Framework.Internal
 #else
-namespace Unit.Common
+namespace NUnit.Common
 #endif
 {
     /// <summary>
@@ -40,6 +39,7 @@ namespace Unit.Common
         TextWriter writer;
         object myLock = new object();
 
+#if !PORTABLE
         /// <summary>
         /// Construct an InternalTraceWriter that writes to a file.
         /// </summary>
@@ -50,6 +50,7 @@ namespace Unit.Common
             streamWriter.AutoFlush = true;
             this.writer = streamWriter;
         }
+#endif
 
         /// <summary>
         /// Construct an InternalTraceWriter that writes to a 
@@ -83,9 +84,9 @@ namespace Unit.Common
         }
 
         /// <summary>
-        /// Writes a string followed by a line terminator to the text string or stream.
+        /// Writes a string to the text string or stream.
         /// </summary>
-        /// <param name="value">The string to write. If <paramref name="value" /> is null, only the line terminator is written.</param>
+        /// <param name="value">The string to write.</param>
         public override void Write(string value)
         {
             lock (myLock)
@@ -94,11 +95,19 @@ namespace Unit.Common
             }
         }
 
+        /// <summary>
+        /// Writes a string followed by a line terminator to the text string or stream.
+        /// </summary>
+        /// <param name="value">The string to write. If <paramref name="value" /> is null, only the line terminator is written.</param>
         public override void WriteLine(string value)
         {
             writer.WriteLine(value);
         }
 
+        /// <summary>
+        /// Releases the unmanaged resources used by the <see cref="T:System.IO.TextWriter" /> and optionally releases the managed resources.
+        /// </summary>
+        /// <param name="disposing">true to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing && writer != null)
@@ -111,6 +120,9 @@ namespace Unit.Common
             base.Dispose(disposing);
         }
 
+        /// <summary>
+        /// Clears all buffers for the current writer and causes any buffered data to be written to the underlying device.
+        /// </summary>
         public override void Flush()
         {
             if ( writer != null )

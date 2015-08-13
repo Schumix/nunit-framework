@@ -1,7 +1,7 @@
 ﻿// ***********************************************************************
 // Copyright (c) 2011-2014 Charlie Poole
 //
-// Permission is hereby granted, free of charge, to any person obtainingn
+// Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
 // "Software"), to deal in the Software without restriction, including
 // without limitation the rights to use, copy, modify, merge, publish,
@@ -21,12 +21,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
 
-using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Xml;
-using NUnit.Engine.Internal;
-
 namespace NUnit.Engine.Runners
 {
     /// <summary>
@@ -35,14 +29,20 @@ namespace NUnit.Engine.Runners
     /// </summary>
     public class MultipleTestProcessRunner : AggregatingTestRunner
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MultipleTestProcessRunner"/> class.
+        /// </summary>
+        /// <param name="services">The services.</param>
+        /// <param name="package">The package.</param>
         public MultipleTestProcessRunner(ServiceContext services, TestPackage package) : base(services, package) { }
 
         #region AggregatingTestRunner Overrides
 
         protected override ITestEngineRunner CreateRunner(TestPackage package)
         {
-            return new ProcessRunner(this.Services, package);
+            return new ProcessRunner(Services, package);
         }
+
         #endregion
     }
 }

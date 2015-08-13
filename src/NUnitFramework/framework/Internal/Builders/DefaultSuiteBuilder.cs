@@ -22,6 +22,7 @@
 // ***********************************************************************
 
 using System;
+using System.Collections.Generic;
 using NUnit.Framework.Interfaces;
 
 namespace NUnit.Framework.Internal.Builders
@@ -31,7 +32,8 @@ namespace NUnit.Framework.Internal.Builders
     /// </summary>
     public class DefaultSuiteBuilder : ISuiteBuilder
     {
-        private NUnitTestFixtureBuilder defaultBuilder = new NUnitTestFixtureBuilder();
+        // Builder we use for fixtures without any fixture attribute specified
+        private NUnitTestFixtureBuilder _defaultBuilder = new NUnitTestFixtureBuilder();
 
         #region ISuiteBuilder Methods
         /// <summary>
@@ -47,23 +49,16 @@ namespace NUnit.Framework.Internal.Builders
         {
             if (type.IsAbstract && !type.IsSealed)
                 return false;
-#if NETCF
-            // No generic fixtures under CF
-            if (type.IsGenericTypeDefinition)
-                return false;
-#endif
 
             if (type.IsDefined(typeof(IFixtureBuilder), true))
                 return true;
 
-#if !NETCF
             // Generics must have an attribute in order to provide
             // them with arguments to determine the specific type.
             // TODO: What about automatic fixtures? Should there
             // be some kind of error shown?
             if (type.IsGenericTypeDefinition)
                 return false;
-#endif
 
             return Reflect.HasMethodWithAttribute(type, typeof(IImplyFixture));
         }
@@ -75,35 +70,52 @@ namespace NUnit.Framework.Internal.Builders
         /// <returns></returns>
         public Test BuildFrom(Type type)
         {
-            IFixtureBuilder[] attrs = GetFixtureBuilderAttributes(type);
+            var fixtures = new List<TestSuite>();
 
-            if (type.IsGenericType)
-                return BuildMultipleFixtures(type, attrs);
-
-            switch (attrs.Length)
+            try
             {
-                case 0:
-                    return defaultBuilder.BuildFrom(type);
-                case 1:
-                    return attrs[0].BuildFrom(type);
-                    //object[] args = attrs[0].Arguments;
-                    //return args == null || args.Length == 0
-                    //    ? attrs[0].BuildFrom(type)
-                    //    : BuildMultipleFixtures(type, attrs);
-                default:
-                    return BuildMultipleFixtures(type, attrs);
+                IFixtureBuilder[] builders = GetFixtureBuilderAttributes(type);
+
+                foreach (var builder in builders)
+                    foreach (var fixture in builder.BuildFrom(type))
+                        fixtures.Add(fixture);
+
+                if (type.IsGenericType)
+                    return BuildMultipleFixtures(type, fixtures);
+
+                switch (fixtures.Count)
+                {
+                    case 0:
+                        return _defaultBuilder.BuildFrom(type);
+                    case 1:
+                        return fixtures[0];
+                    default:
+                        return BuildMultipleFixtures(type, fixtures);
+                }
+            }
+            catch (Exception ex)
+            {
+                var fixture = new TestFixture(type);
+                fixture.RunState = RunState.NotRunnable;
+
+                if (ex is System.Reflection.TargetInvocationException)
+                    ex = ex.InnerException;
+                var msg = "An exception was thrown while loading the test." + Env.NewLine + ex.ToString();
+                fixture.Properties.Add(PropertyNames.SkipReason, msg);
+
+                return fixture;
             }
         }
         #endregion
 
         #region Helper Methods
 
-        private Test BuildMultipleFixtures(Type type, IFixtureBuilder[] attrs)
+        private Test BuildMultipleFixtures(Type type, IEnumerable<TestSuite> fixtures)
         {
             TestSuite suite = new ParameterizedFixtureSuite(type);
 
-            foreach (IFixtureBuilder attr in attrs)
-                suite.Add(attr.BuildFrom(type));
+            foreach (var fixture in fixtures)
+                suite.Add(fixture);
 
             return suite;
         }
@@ -125,12 +137,48 @@ namespace NUnit.Framework.Internal.Builders
                 attrs = (IFixtureBuilder[])type.GetCustomAttributes(typeof(IFixtureBuilder), false);
 
                 if (attrs.Length > 0)
-                    return attrs;
+                {
+                    // We want to eliminate duplicates that have no args.
+                    // If there is just one, no duplication is possible.
+                    if (attrs.Length == 1)
+                        return attrs;
+
+                    // Count how many have arguments
+                    int withArgs = 0;
+                    foreach (var attr in attrs)
+                        if (HasArguments(attr))
+                            withArgs++;
+
+                    // If all have args, just return them
+                    if (withArgs == attrs.Length)
+                        return attrs;
+
+                    // If none of them have args, return the first one
+                    if (withArgs == 0)
+                        return new IFixtureBuilder[] { attrs[0] };
+                    
+                    // Some of each - extract those with args
+                    var result = new IFixtureBuilder[withArgs];
+                    int count = 0;
+                    foreach (var attr in attrs)
+                        if (HasArguments(attr))
+                            result[count++] = attr;
+
+                    return result;
+                }
 
                 type = type.BaseType;
             }
 
             return attrs;
+        }
+
+        private bool HasArguments(IFixtureBuilder attr)
+        {
+            // Only TestFixtureAttribute can be used without arguments
+            var temp = attr as TestFixtureAttribute;
+
+            return temp == null || temp.Arguments.Length > 0 || temp.TypeArgs.Length > 0;
         }
 
         #endregion

@@ -1,8 +1,8 @@
 ﻿using System;
 
-#if NUNIT_ENGINE
+#if NUNIT_ENGINE || CORE_ENGINE
 namespace NUnit.Engine
-#elif NUNIT_FRAMEWORK || NUNITLITE
+#elif NUNIT_FRAMEWORK
 namespace NUnit.Framework
 #else
 namespace NUnit.Common
@@ -36,6 +36,18 @@ namespace NUnit.Common
 
             if (value == string.Empty)
                 throw new ArgumentException("Argument " + name +" must not be the empty string", name);
+        }
+
+        /// <summary>
+        /// Throws an ArgumentOutOfRangeException if the specified condition is not met.
+        /// </summary>
+        /// <param name="condition">The condition that must be met</param>
+        /// <param name="message">The exception message to be used</param>
+        /// <param name="paramName">The name of the argument</param>
+        public static void ArgumentInRange(bool condition, string message, string paramName)
+        {
+            if (!condition)
+                throw new ArgumentOutOfRangeException(paramName, message);
         }
 
         /// <summary>

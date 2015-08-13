@@ -1,4 +1,4 @@
-﻿// ***********************************************************************
+// ***********************************************************************
 // Copyright (c) 2014 Charlie Poole
 //
 // Permission is hereby granted, free of charge, to any person obtaining
@@ -8,10 +8,10 @@
 // distribute, sublicense, and/or sell copies of the Software, and to
 // permit persons to whom the Software is furnished to do so, subject to
 // the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be
 // included in all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -21,8 +21,9 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
 
-using System;
+#if !SILVERLIGHT && !PORTABLE
 using System.IO;
+using NUnit.Common;
 using NUnit.Framework;
 
 namespace NUnitLite.Runner.Tests
@@ -32,8 +33,8 @@ namespace NUnitLite.Runner.Tests
         [Test]
         public void WhenTimeoutIsSpecified_RunSettingsIncludeIt()
         {
-            var options = new CommandLineOptions("test.dll", "--timeout=50");
-            var settings = TextUI.MakeRunSettings(options);
+            var options = new ConsoleOptions("test.dll", "--timeout=50");
+            var settings = TextRunner.MakeRunSettings(options);
 
             Assert.That(settings.ContainsKey("DefaultTimeout"));
             Assert.AreEqual(50, settings["DefaultTimeout"]);
@@ -42,8 +43,8 @@ namespace NUnitLite.Runner.Tests
         [Test]
         public void WhenWorkDirectoryIsSpecified_RunSettingsIncludeIt()
         {
-            var options = new CommandLineOptions("test.dll", "--work=results");
-            var settings = TextUI.MakeRunSettings(options);
+            var options = new ConsoleOptions("test.dll", "--work=results");
+            var settings = TextRunner.MakeRunSettings(options);
 
             Assert.That(settings.ContainsKey("WorkDirectory"));
             Assert.AreEqual(Path.GetFullPath("results"), settings["WorkDirectory"]);
@@ -52,11 +53,12 @@ namespace NUnitLite.Runner.Tests
         [Test]
         public void WhenSeedIsSpecified_RunSettingsIncludeIt()
         {
-            var options = new CommandLineOptions("test.dll", "--seed=1234");
-            var settings = TextUI.MakeRunSettings(options);
+            var options = new ConsoleOptions("test.dll", "--seed=1234");
+            var settings = TextRunner.MakeRunSettings(options);
 
             Assert.That(settings.ContainsKey("RandomSeed"));
             Assert.AreEqual(1234, settings["RandomSeed"]);
         }
     }
 }
+#endif

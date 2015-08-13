@@ -1,4 +1,4 @@
-﻿// ***********************************************************************
+// ***********************************************************************
 // Copyright (c) 2014 Charlie Poole
 //
 // Permission is hereby granted, free of charge, to any person obtaining
@@ -8,10 +8,10 @@
 // distribute, sublicense, and/or sell copies of the Software, and to
 // permit persons to whom the Software is furnished to do so, subject to
 // the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be
 // included in all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -21,7 +21,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
 
-#if !NETCF // Currently won't work because the methods are generic
 using System;
 using System.Threading;
 using NUnit.Framework.Internal;
@@ -31,15 +30,19 @@ namespace NUnit.Framework.Attributes
     public class DerivedPropertyAttributeTests
     {
         [TestCase(typeof(DescriptionAttribute), PropertyNames.Description, "description")]
-        [TestCase(typeof(LevelOfParallelizationAttribute), PropertyNames.LevelOfParallelization, 7)]
+        [TestCase(typeof(LevelOfParallelismAttribute), PropertyNames.LevelOfParallelism, 7)]
         [TestCase(typeof(MaxTimeAttribute), PropertyNames.MaxTime, 50)]
         [TestCase(typeof(ParallelizableAttribute), PropertyNames.ParallelScope, ParallelScope.Fixtures)]
 #if !NETCF
         [TestCase(typeof(SetCultureAttribute), PropertyNames.SetCulture, "fr-FR")]
         [TestCase(typeof(SetUICultureAttribute), PropertyNames.SetUICulture, "fr-FR")]
-#if !SILVERLIGHT
-        [TestCase(typeof(TimeoutAttribute), PropertyNames.Timeout, 50)]
+#if !SILVERLIGHT && !PORTABLE
+        [TestCase(typeof(ApartmentAttribute), PropertyNames.ApartmentState, ApartmentState.MTA)]
+        [TestCase(typeof(ApartmentAttribute), PropertyNames.ApartmentState, ApartmentState.STA)]
 #endif
+#endif
+#if !SILVERLIGHT && !PORTABLE
+        [TestCase(typeof(TimeoutAttribute), PropertyNames.Timeout, 50)]
 #endif
         public void ConstructWithOneArg<T>(Type attrType, string propName, T propValue)
         {
@@ -49,9 +52,7 @@ namespace NUnit.Framework.Attributes
         }
 
         [TestCase(typeof(ParallelizableAttribute), PropertyNames.ParallelScope, ParallelScope.Self)]
-#if !NETCF && !SILVERLIGHT
-        [TestCase(typeof(RequiresMTAAttribute), PropertyNames.ApartmentState, ApartmentState.MTA)]
-        [TestCase(typeof(RequiresSTAAttribute), PropertyNames.ApartmentState, ApartmentState.STA)]
+#if !SILVERLIGHT && !PORTABLE
         [TestCase(typeof(RequiresThreadAttribute), PropertyNames.RequiresThread, true)]
 #endif
         public void ConstructWithNoArgs<T>(Type attrType, string propName, T propValue)
@@ -62,4 +63,3 @@ namespace NUnit.Framework.Attributes
         }
     }
 }
-#endif

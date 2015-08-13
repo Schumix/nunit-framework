@@ -22,12 +22,11 @@
 // ***********************************************************************
 
 using System.IO;
+using NUnit.Common;
 using NUnit.Framework;
 
 namespace NUnit.ConsoleRunner.Tests
 {
-    using Options;
-
     public class MakeTestPackageTests
     {
         [Test]
@@ -36,106 +35,45 @@ namespace NUnit.ConsoleRunner.Tests
             var options = new ConsoleOptions("test.dll");
             var package = ConsoleRunner.MakeTestPackage(options);
 
-            Assert.AreEqual(1, package.TestFiles.Length);
-            Assert.AreEqual(Path.GetFullPath("test.dll"), package.FullName);
+            Assert.AreEqual(1, package.SubPackages.Count);
+            Assert.AreEqual(Path.GetFullPath("test.dll"), package.SubPackages[0].FullName);
         }
 
         [Test]
         public void MultipleAssemblies()
         {
             var names = new [] { "test1.dll", "test2.dll", "test3.dll" };
-            var expected = new[] {
-                Path.GetFullPath("test1.dll"),
-                Path.GetFullPath("test2.dll"),
-                Path.GetFullPath("test3.dll")
-            };
             var options = new ConsoleOptions(names);
             var package = ConsoleRunner.MakeTestPackage(options);
 
-            Assert.AreEqual(expected, package.TestFiles);
+            Assert.AreEqual(3, package.SubPackages.Count);
+            Assert.AreEqual(Path.GetFullPath("test1.dll"), package.SubPackages[0].FullName);
+            Assert.AreEqual(Path.GetFullPath("test2.dll"), package.SubPackages[1].FullName);
+            Assert.AreEqual(Path.GetFullPath("test3.dll"), package.SubPackages[2].FullName);
         }
 
-        [Test]
-        public void WhenTimeoutIsSpecified_PackageIncludesIt()
+        [TestCase("--timeout=50", "DefaultTimeout", 50)]
+        [TestCase("--x86", "RunAsX86", true)]
+        [TestCase("--dispose-runners", "DisposeRunners", true)]
+        [TestCase("--shadowcopy", "ShadowCopyFiles", true)]
+        [TestCase("--process=Separate", "ProcessModel", "Separate")]
+        [TestCase("--process=separate", "ProcessModel", "Separate")]
+        [TestCase("--domain=Multiple", "DomainUsage", "Multiple")]
+        [TestCase("--domain=multiple", "DomainUsage", "Multiple")]
+        [TestCase("--framework=net-4.0", "RuntimeFramework", "net-4.0")]
+        [TestCase("--config=Release", "ActiveConfig", "Release")]
+        [TestCase("--trace=Error", "InternalTraceLevel", "Error")]
+        [TestCase("--trace=error", "InternalTraceLevel", "Error")]
+        [TestCase("--seed=1234", "RandomSeed", 1234)]
+        [TestCase("--workers=3", "NumberOfTestWorkers", 3)]
+        [TestCase("--workers=0", "NumberOfTestWorkers", 0)]
+        public void WhenOptionIsSpecified_PackageIncludesSetting(string option, string key, object val)
         {
-            var options = new ConsoleOptions("test.dll", "--timeout=50");
+            var options = new ConsoleOptions("test.dll", option);
             var package = ConsoleRunner.MakeTestPackage(options);
 
-            Assert.That(package.Settings.ContainsKey("DefaultTimeout"));
-            Assert.AreEqual(50, package.Settings["DefaultTimeout"]);
-        }
-
-        [TestCase("Separate")]
-        [TestCase("separate")]
-        public void WhenProcessModelIsSpecified_PackageIncludesIt(string optionValue)
-        {
-            var options = new ConsoleOptions("test.dll", "--process=" + optionValue);
-            var package = ConsoleRunner.MakeTestPackage(options);
-
-            Assert.That(package.Settings.ContainsKey("ProcessModel"));
-            Assert.AreEqual("Separate", package.Settings["ProcessModel"]);
-        }
-
-        [TestCase("Multiple")]
-        [TestCase("multiple")]
-        public void WhenDomainUsageIsSpecified_PackageIncludesIt(string optionValue)
-        {
-            var options = new ConsoleOptions("test.dll", "--domain=" + optionValue);
-            var package = ConsoleRunner.MakeTestPackage(options);
-
-            Assert.That(package.Settings.ContainsKey("DomainUsage"));
-            Assert.AreEqual("Multiple", package.Settings["DomainUsage"]);
-        }
-
-        [Test]
-        public void WhenFrameworkIsSpecified_PackageIncludesIt()
-        {
-            var options = new ConsoleOptions("test.dll", "--framework=net-4.0");
-            var package = ConsoleRunner.MakeTestPackage(options);
-
-            Assert.That(package.Settings.ContainsKey("RuntimeFramework"));
-            Assert.AreEqual("net-4.0", package.Settings["RuntimeFramework"]);
-        }
-
-        [Test]
-        public void WhenConfigIsSpecified_PackageIncludesIt()
-        {
-            var options = new ConsoleOptions("test.dll", "--config=Release");
-            var package = ConsoleRunner.MakeTestPackage(options);
-
-            Assert.That(package.Settings.ContainsKey("ActiveConfig"));
-            Assert.AreEqual("Release", package.Settings["ActiveConfig"]);
-        }
-
-        [TestCase("Error")]
-        [TestCase("error")]
-        public void WhenTraceIsSpecified_PackageIncludesIt(string optionValue)
-        {
-            var options = new ConsoleOptions("test.dll", "--trace=" + optionValue);
-            var package = ConsoleRunner.MakeTestPackage(options);
-
-            Assert.That(package.Settings.ContainsKey("InternalTraceLevel"));
-            Assert.AreEqual("Error", package.Settings["InternalTraceLevel"]);
-        }
-
-        [Test]
-        public void WhenSeedIsSpecified_PackageIncludesIt()
-        {
-            var options = new ConsoleOptions("test.dll", "--seed=1234");
-            var package = ConsoleRunner.MakeTestPackage(options);
-
-            Assert.That(package.Settings.ContainsKey("RandomSeed"));
-            Assert.AreEqual(1234, package.Settings["RandomSeed"]);
-        }
-
-        [Test]
-        public void WhenWorkersIsSpecified_PackageIncludesIt()
-        {
-            var options = new ConsoleOptions("test.dll", "--workers=3");
-            var package = ConsoleRunner.MakeTestPackage(options);
-
-            Assert.That(package.Settings.ContainsKey("NumberOfTestWorkers"));
-            Assert.AreEqual(3, package.Settings["NumberOfTestWorkers"]);
+            Assert.That(package.Settings.ContainsKey(key), "Setting not included for {0}", option);
+            Assert.AreEqual(val, package.Settings[key], "NumberOfTestWorkers not set correctly for {0}", option);
         }
 
         //[Test]
@@ -166,12 +104,13 @@ namespace NUnit.ConsoleRunner.Tests
         //}
 
         [Test]
-        public void WhenNoOptionsAreSpecified_PackageContainsNoSettings()
+        public void WhenNoOptionsAreSpecified_PackageContainsWorkDirectorySettingOnly()
         {
             var options = new ConsoleOptions("test.dll");
             var package = ConsoleRunner.MakeTestPackage(options);
 
-            Assert.AreEqual(0, package.Settings.Count);
+            Assert.AreEqual(1, package.Settings.Count);
+            Assert.That(package.Settings.Keys, Contains.Item("WorkDirectory"));
         }
     }
 }

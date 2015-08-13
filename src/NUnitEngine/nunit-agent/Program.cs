@@ -80,7 +80,7 @@ namespace NUnit.Agent
 #endif
 
             // Create SettingsService early so we know the trace level right at the start
-            SettingsService settingsService = new SettingsService("NUnit30Settings.xml", false);
+            SettingsService settingsService = new SettingsService(false);
             //InternalTrace.Initialize("nunit-agent_%p.log", (InternalTraceLevel)settingsService.GetSetting("Options.InternalTraceLevel", InternalTraceLevel.Default));
 
             //log.Info("Agent process {0} starting", Process.GetCurrentProcess().Id);
@@ -107,12 +107,12 @@ namespace NUnit.Agent
             engine.Services.Add(new ProjectService());
             engine.Services.Add(new DomainManager());
             engine.Services.Add(new InProcessTestRunnerFactory());
-            engine.Services.Add(new DriverFactory());
+            engine.Services.Add(new DriverService());
             //engine.Services.Add( new TestLoader() );
 
             // Initialize Services
             //log.Info("Initializing Services");
-            engine.Services.ServiceManager.InitializeServices();
+            engine.Initialize();
 
             Channel = ServerUtilities.GetTcpChannel();
 
@@ -147,7 +147,7 @@ namespace NUnit.Agent
                 catch (Exception ex)
                 {
                     //log.Error("Exception in RemoteTestAgent", ex);
-                    Console.WriteLine("Exception in RemoteTestAgent", ex);
+                    Console.WriteLine("Exception in RemoteTestAgent\r\n{0}", ex);
                 }
 
                 //log.Info("Unregistering Channel");

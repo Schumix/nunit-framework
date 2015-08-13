@@ -1,4 +1,4 @@
-﻿// ***********************************************************************
+// ***********************************************************************
 // Copyright (c) 2014 Charlie Poole
 //
 // Permission is hereby granted, free of charge, to any person obtaining
@@ -8,10 +8,10 @@
 // distribute, sublicense, and/or sell copies of the Software, and to
 // permit persons to whom the Software is furnished to do so, subject to
 // the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be
 // included in all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -30,16 +30,18 @@ namespace NUnit.Framework.Internal.Execution
     /// <summary>
     /// SimpleWorkItemDispatcher handles execution of WorkItems by
     /// directly executing them. It is provided so that a dispatcher
-    /// is always available in the context, thereby simplifying the 
+    /// is always available in the context, thereby simplifying the
     /// code needed to run child tests.
     /// </summary>
     public class SimpleWorkItemDispatcher : IWorkItemDispatcher
     {
+#if !PORTABLE
         // The first WorkItem to be dispatched, assumed to be top-level item
         private WorkItem _topLevelWorkItem;
 
         // Thread used to run and cancel tests
         private Thread _runnerThread;
+#endif
 
         #region IWorkItemDispatcher Members
 
@@ -53,6 +55,10 @@ namespace NUnit.Framework.Internal.Execution
         /// <param name="work">The item to dispatch</param>
         public void Dispatch(WorkItem work)
         {
+#if PORTABLE
+            if (work != null)
+                work.Execute();
+#else
             if (_topLevelWorkItem != null)
                 work.Execute();
             else
@@ -60,30 +66,32 @@ namespace NUnit.Framework.Internal.Execution
                 _topLevelWorkItem = work;
                 _runnerThread = new Thread(RunnerThreadProc);
                 _runnerThread.Start();
-            }
-        }
-
-        private void RunnerThreadProc()
-        {
-            _topLevelWorkItem.Execute();
-        }
-
-        /// <summary>
-        /// Cancel the ongoing run completely.
-        /// If no run is in process, the call has no effect.
-        /// </summary>
-        public void CancelRun()
-        {
-#if NETCF
-            // NETCF: Check if this can be done better
-            if (_runnerThread != null)
-                _runnerThread.Abort();
-#else
-            if (_runnerThread != null && _runnerThread.IsAlive)
-                ThreadUtility.Kill(_runnerThread);
+			}	
 #endif
         }
 
-        #endregion
+#if !PORTABLE
+    private void RunnerThreadProc()
+    {
+        _topLevelWorkItem.Execute();
     }
+#endif
+
+		/// <summary>
+		/// Cancel the ongoing run completely.
+		/// If no run is in process, the call has no effect.
+		/// </summary>
+		public void CancelRun()
+		{
+	#if !PORTABLE
+	#if NETCF
+			if (_runnerThread != null && !_runnerThread.Join(0))
+	#else
+			if (_runnerThread != null && _runnerThread.IsAlive)
+	#endif
+				ThreadUtility.Kill(_runnerThread);
+	#endif
+		}
+		#endregion
+	}
 }

@@ -24,8 +24,13 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using NUnit.Engine.Internal;
 using NUnit.Engine.Services;
+
+#if NUNIT_ENGINE
+using Mono.Addins;
+#endif
 
 namespace NUnit.Engine
 {
@@ -63,28 +68,40 @@ namespace NUnit.Engine
         {
             get
             {
-                if(!this.Services.ServiceManager.ServicesInitialized)
-                    InitializeServices();
+                if(!Services.ServiceManager.ServicesInitialized)
+                    Initialize();
 
-                return this.Services;
+                return Services;
             }
         }
 
         /// <summary>
-        /// Create and initialize the standard set of services
-        /// used in the Engine. This interface is not normally
-        /// called by user code. Programs linking only to 
+        /// Initialize the engine. This includes initializing mono addins,
+        /// setting the trace level and creating the standard set of services 
+        /// used in the Engine.
+        /// 
+        /// This interface is not normally called by user code. Programs linking 
         /// only to the nunit.engine.api assembly are given a
         /// pre-initialized instance of TestEngine. Programs 
         /// that link directly to nunit.engine usually do so
         /// in order to perform custom initialization.
         /// </summary>
-        public void InitializeServices()
+        public void Initialize()
         {
-            SettingsService settingsService = new SettingsService("NUnit30Settings.xml", true);
+#if NUNIT_ENGINE
+            if (!AddinManager.IsInitialized)
+            {
+                // Pass in the current nunit.engine assembly because mono.addins uses the executing assembly by
+                // default and that might be in a an entirely different directory than the runner that is using it.
+                AddinManager.Initialize(Assembly.GetExecutingAssembly(), NUnitConfiguration.ApplicationDirectory);
+                AddinManager.Registry.Update(null);
+            }
+#endif
+
+            SettingsService settingsService = new SettingsService(true);
 
             if(InternalTraceLevel == InternalTraceLevel.Default)
-                InternalTraceLevel = (InternalTraceLevel)settingsService.GetSetting("Options.InternalTraceLevel", InternalTraceLevel.Off);
+                InternalTraceLevel = settingsService.GetSetting("Options.InternalTraceLevel", InternalTraceLevel.Off);
 
             if(InternalTraceLevel != InternalTraceLevel.Off)
             {
@@ -92,16 +109,22 @@ namespace NUnit.Engine
                 InternalTrace.Initialize(Path.Combine(WorkDirectory, logName), InternalTraceLevel);
             }
 
-            this.Services.Add(settingsService);
-            this.Services.Add(new RecentFilesService());
-            this.Services.Add(new DomainManager());
-            this.Services.Add(new ProjectService());
-            this.Services.Add(new RuntimeFrameworkSelector());
-            this.Services.Add(new DefaultTestRunnerFactory());
-            this.Services.Add(new DriverFactory());
-            this.Services.Add(new TestAgency());
+            Services.Add(settingsService);
+            Services.Add(new DomainManager());
+            Services.Add(new DriverService());
 
-            this.Services.ServiceManager.InitializeServices();
+#if NUNIT_ENGINE
+            Services.Add(new RecentFilesService());
+            Services.Add(new ProjectService());
+            Services.Add(new RuntimeFrameworkService());
+            Services.Add(new DefaultTestRunnerFactory());
+            Services.Add(new TestAgency());
+            Services.Add(new ResultService());
+#else
+            Services.Add(new CoreTestRunnerFactory());
+#endif
+
+            Services.ServiceManager.StartServices();
         }
 
         /// <summary>
@@ -112,19 +135,34 @@ namespace NUnit.Engine
         /// <returns>An ITestRunner.</returns>
         public ITestRunner GetRunner(TestPackage package)
         {
-            if(!this.Services.ServiceManager.ServicesInitialized)
-                InitializeServices();
+            if(!Services.ServiceManager.ServicesInitialized)
+                Initialize();
 
-            return new Runners.MasterTestRunner(this.Services, package);
+            return new Runners.MasterTestRunner(Services, package);
         }
 
         #endregion
 
         #region IDisposable Members
 
+        private bool _disposed = false;
+
         public void Dispose()
         {
-            Services.ServiceManager.StopAllServices();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+            Services.ServiceManager.StopServices();
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                    Services.ServiceManager.Dispose();
+
+                _disposed = true;
+            }
         }
 
         #endregion

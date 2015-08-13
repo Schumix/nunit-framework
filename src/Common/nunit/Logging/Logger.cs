@@ -24,14 +24,17 @@
 using System;
 using System.IO;
 
-#if NUNIT_ENGINE
+#if NUNIT_ENGINE || CORE_ENGINE
 namespace NUnit.Engine.Internal
-#elif NUNIT_FRAMEWORK || NUNITLITE
+#elif NUNIT_FRAMEWORK
 namespace NUnit.Framework.Internal
 #else
 namespace NUnit.Common
 #endif
 {
+    /// <summary>
+    /// Provides internal logging to the NUnit framework
+    /// </summary>
     public class Logger : ILogger
     {
         private readonly static string TIME_FMT = "HH:mm:ss.fff";

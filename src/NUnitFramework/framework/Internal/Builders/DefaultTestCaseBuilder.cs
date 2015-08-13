@@ -49,7 +49,7 @@ namespace NUnit.Framework.Internal.Builders
         /// <summary>
         /// Determines if the method can be used to build an NUnit test
         /// test method of some kind. The method must normally be marked
-        /// with an identifying attriute for this to be true.
+        /// with an identifying attribute for this to be true.
         /// 
         /// Note that this method does not check that the signature
         /// of the method for validity. If we did that here, any
@@ -86,7 +86,7 @@ namespace NUnit.Framework.Internal.Builders
         /// <summary>
         /// Determines if the method can be used to build an NUnit test
         /// test method of some kind. The method must normally be marked
-        /// with an identifying attriute for this to be true.
+        /// with an identifying attribute for this to be true.
         /// 
         /// Note that this method does not check that the signature
         /// of the method for validity. If we did that here, any
@@ -130,6 +130,9 @@ namespace NUnit.Framework.Internal.Builders
             // We could check to see if here are any data attributes specified
             // on the parameters but that's what CombinatorialAttribute does
             // and it simply won't return any cases if it finds nothing.
+            // TODO: We need to add some other ITestBuilder than a combinatorial attribute
+            // because we want the attribute to generate an error if it's present on
+            // a generic method.
             if (needCombinatorial)
                 builders.Add(new CombinatorialAttribute());
 
@@ -149,7 +152,7 @@ namespace NUnit.Framework.Internal.Builders
         #region Helper Methods
 
         /// <summary>
-        /// Builds a ParameterizedMetodSuite containing individual test cases.
+        /// Builds a ParameterizedMethodSuite containing individual test cases.
         /// </summary>
         /// <param name="method">The MethodInfo for which a test is to be built.</param>
         /// <param name="tests">The list of test cases to include.</param>

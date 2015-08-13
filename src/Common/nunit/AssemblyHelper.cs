@@ -1,4 +1,4 @@
-﻿// ***********************************************************************
+// ***********************************************************************
 // Copyright (c) 2008 Charlie Poole
 //
 // Permission is hereby granted, free of charge, to any person obtaining
@@ -8,10 +8,10 @@
 // distribute, sublicense, and/or sell copies of the Software, and to
 // permit persons to whom the Software is furnished to do so, subject to
 // the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be
 // included in all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -22,25 +22,26 @@
 // ***********************************************************************
 
 using System;
+using System.IO;
 using System.Reflection;
 
-#if NUNIT_ENGINE
+#if NUNIT_ENGINE || CORE_ENGINE
 namespace NUnit.Engine.Internal
-#elif NUNIT_FRAMEWORK || NUNITLITE
+#elif NUNIT_FRAMEWORK
 namespace NUnit.Framework.Internal
 #else
 namespace NUnit.Common
 #endif
 {
     /// <summary>
-    /// AssemblyHelper provides static methods for working 
+    /// AssemblyHelper provides static methods for working
     /// with assemblies.
     /// </summary>
     public class AssemblyHelper
     {
         #region GetAssemblyPath
 
-#if !NETCF && !SILVERLIGHT
+#if !SILVERLIGHT && !PORTABLE
         /// <summary>
         /// Gets the path from which the assembly defining a type was loaded.
         /// </summary>
@@ -58,12 +59,16 @@ namespace NUnit.Common
         /// <returns>The path.</returns>
         public static string GetAssemblyPath(Assembly assembly)
         {
+#if NETCF
+            return assembly.ManifestModule.FullyQualifiedName;
+#else
             string codeBase = assembly.CodeBase;
 
             if (IsFileUri(codeBase))
                 return GetAssemblyPathFromCodeBase(codeBase);
 
             return assembly.Location;
+#endif
         }
 #endif
 
@@ -71,15 +76,15 @@ namespace NUnit.Common
 
         #region GetDirectoryName
 
-#if !NETCF && !SILVERLIGHT
+#if !SILVERLIGHT && !PORTABLE
         /// <summary>
         /// Gets the path to the directory from which an assembly was loaded.
         /// </summary>
         /// <param name="assembly">The assembly.</param>
         /// <returns>The path.</returns>
-        public static string GetDirectoryName( Assembly assembly )
+        public static string GetDirectoryName(Assembly assembly)
         {
-            return System.IO.Path.GetDirectoryName(GetAssemblyPath(assembly));
+            return Path.GetDirectoryName(GetAssemblyPath(assembly));
         }
 #endif
 
@@ -94,7 +99,7 @@ namespace NUnit.Common
         /// <returns>An AssemblyName</returns>
         public static AssemblyName GetAssemblyName(Assembly assembly)
         {
-#if SILVERLIGHT
+#if SILVERLIGHT || PORTABLE
             return new AssemblyName(assembly.FullName);
 #else
             return assembly.GetName();
@@ -103,9 +108,40 @@ namespace NUnit.Common
 
         #endregion
 
+        #region Load
+
+        /// <summary>
+        /// Loads an assembly given a string, which may be the 
+        /// path to the assembly or the AssemblyName
+        /// </summary>
+        /// <param name="nameOrPath"></param>
+        /// <returns></returns>
+        public static Assembly Load(string nameOrPath)
+        {
+#if !SILVERLIGHT && !PORTABLE
+            var ext = Path.GetExtension(nameOrPath).ToLower();
+
+            // It's a path to an assembly, get the AssemblyName and load it
+            if (ext == ".dll" || ext == ".exe")
+            {
+#if NETCF
+                return Assembly.LoadFrom(nameOrPath);
+#else
+                var assemblyRef = AssemblyName.GetAssemblyName(nameOrPath);
+                return Assembly.Load(assemblyRef);
+#endif
+            }
+#endif
+
+            // Assume it's the string representation of an AssemblyName
+            return Assembly.Load(nameOrPath);
+        }
+
+        #endregion
+
         #region Helper Methods
 
-#if !NETCF
+#if !NETCF && !SILVERLIGHT && !PORTABLE
         private static bool IsFileUri(string uri)
         {
             return uri.ToLower().StartsWith(Uri.UriSchemeFile);
@@ -127,7 +163,7 @@ namespace NUnit.Common
                 // Handle Windows Drive specifications
                 if (codeBase[start + 2] == ':')
                     ++start;
-                // else leave the last slash so path is absolute  
+                // else leave the last slash so path is absolute
             }
             else // It's either a Windows Drive spec or a share
             {
@@ -142,4 +178,3 @@ namespace NUnit.Common
         #endregion
     }
 }
-

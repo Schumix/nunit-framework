@@ -20,8 +20,8 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
-
 using System;
+using NUnit.Framework.Compatibility;
 
 namespace NUnit.Framework.Constraints
 {
@@ -36,7 +36,7 @@ namespace NUnit.Framework.Constraints
         private Attribute attrFound;
 
         /// <summary>
-        /// Constructs an AttributeConstraint for a specified attriute
+        /// Constructs an AttributeConstraint for a specified attribute
         /// Type and base constraint.
         /// </summary>
         /// <param name="type"></param>
@@ -59,14 +59,8 @@ namespace NUnit.Framework.Constraints
         /// </summary>
         public override ConstraintResult ApplyTo<TActual>(TActual actual)
         {
-            System.Reflection.ICustomAttributeProvider attrProvider =
-                actual as System.Reflection.ICustomAttributeProvider;
-
-            // TODO: Use Error Result for these rather than throwing an exception
-            if (attrProvider == null)
-                throw new ArgumentException(string.Format("Actual value {0} does not implement ICustomAttributeProvider", actual), "actual");
-
-            Attribute[] attrs = (Attribute[])attrProvider.GetCustomAttributes(expectedType, true);
+            Guard.ArgumentNotNull(actual, "actual");
+            Attribute[] attrs = AttributeHelper.GetCustomAttributes(actual, expectedType, true);
             if (attrs.Length == 0)
                 throw new ArgumentException(string.Format("Attribute {0} was not found", expectedType), "actual");
 

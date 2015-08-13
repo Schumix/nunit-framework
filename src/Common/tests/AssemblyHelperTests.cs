@@ -1,4 +1,4 @@
-﻿// ***********************************************************************
+// ***********************************************************************
 // Copyright (c) 2012 Charlie Poole
 //
 // Permission is hereby granted, free of charge, to any person obtaining
@@ -8,10 +8,10 @@
 // distribute, sublicense, and/or sell copies of the Software, and to
 // permit persons to whom the Software is furnished to do so, subject to
 // the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be
 // included in all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -21,14 +21,15 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
 
+#if !SILVERLIGHT && !PORTABLE
 using System;
 using System.IO;
 using System.Reflection;
 using NUnit.Framework;
 
-#if NUNIT_ENGINE
+#if NUNIT_ENGINE || CORE_ENGINE
 namespace NUnit.Engine.Internal.Tests
-#elif NUNIT_FRAMEWORK || NUNITLITE
+#elif NUNIT_FRAMEWORK
 namespace NUnit.Framework.Internal.Tests
 #else
 namespace NUnit.Common.Tests
@@ -40,11 +41,15 @@ namespace NUnit.Common.Tests
 #if NUNIT_ENGINE
         private static readonly string THIS_ASSEMBLY_PATH = "nunit.engine.tests.dll";
         private static readonly string THIS_ASSEMBLY_NAME = "nunit.engine.tests";
-#elif NUNITLITE
-        private static readonly string THIS_ASSEMBLY_PATH = "nunitlite.tests.exe";
-        private static readonly string THIS_ASSEMBLY_NAME = "nunitlite.tests";
+#elif CORE_ENGINE
+        private static readonly string THIS_ASSEMBLY_PATH = "nunit.core.engine.tests.dll";
+        private static readonly string THIS_ASSEMBLY_NAME = "nunit.core.engine.tests";
+#else
+#if NETCF
+        private static readonly string THIS_ASSEMBLY_PATH = "nunit.framework.tests.exe";
 #else
         private static readonly string THIS_ASSEMBLY_PATH = "nunit.framework.tests.dll";
+#endif
         private static readonly string THIS_ASSEMBLY_NAME = "nunit.framework.tests";
 #endif
 
@@ -55,7 +60,7 @@ namespace NUnit.Common.Tests
             Assert.That(assemblyName.FullName, Is.EqualTo(THIS_ASSEMBLY_PATH).IgnoreCase);
         }
 
-#if !NETCF && !SILVERLIGHT
+#if !SILVERLIGHT
         [Test]
         public void GetPathForAssembly()
         {
@@ -71,7 +76,8 @@ namespace NUnit.Common.Tests
             Assert.That(Path.GetFileName(path), Is.EqualTo(THIS_ASSEMBLY_PATH).IgnoreCase);
             Assert.That(File.Exists(path));
         }
-        
+
+#if !NETCF
         // The following tests are only useful to the extent that the test cases
         // match what will actually be provided to the method in production.
         // As currently used, NUnit's codebase can only use the file: schema,
@@ -98,12 +104,14 @@ namespace NUnit.Common.Tests
         [TestCase(@"file://server/my path/to my/assembly.dll", @"//server/my path/to my/assembly.dll")]
         [TestCase(@"file://server/dev/C#/assembly.dll", @"//server/dev/C#/assembly.dll")]
         [TestCase(@"file://server/dev/funnychars?:=/assembly.dll", @"//server/dev/funnychars?:=/assembly.dll")]
-        //[TestCase(@"http://server/path/to/assembly.dll", "//server/path/to/assembly.dll")]
+        // [TestCase(@"http://server/path/to/assembly.dll", "//server/path/to/assembly.dll")]
         public void GetAssemblyPathFromCodeBase(string uri, string expectedPath)
         {
             string localPath = AssemblyHelper.GetAssemblyPathFromCodeBase(uri);
             Assert.That(localPath, Is.SamePath(expectedPath));
         }
 #endif
+#endif
     }
 }
+#endif

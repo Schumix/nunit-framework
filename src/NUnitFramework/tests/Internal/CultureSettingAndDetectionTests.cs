@@ -149,7 +149,9 @@ namespace NUnit.Framework.Internal
                 Assert.AreEqual( RunState.Skipped, test.RunState, test.Name );
         }
 
+#if !PORTABLE
         [Test]
+        [Platform(Exclude = "Windows10,WindowsServer10", Reason = "An unknown culture string creates a user defined culture in Windows 10")]
         public void SettingInvalidCultureOnFixtureGivesError()
         {
             ITestResult result = TestBuilder.RunTestFixture(typeof(FixtureWithInvalidSetCultureAttribute));
@@ -163,6 +165,7 @@ namespace NUnit.Framework.Internal
         }
 
         [Test]
+        [Platform(Exclude = "Windows10,WindowsServer10", Reason = "An unknown culture string creates a user defined culture in Windows 10")]
         public void SettingInvalidCultureOnTestGivesError()
         {
             ITestResult result = TestBuilder.RunTestCase(typeof(FixtureWithInvalidSetCultureAttributeOnTest), "InvalidCultureSet");
@@ -174,7 +177,7 @@ namespace NUnit.Framework.Internal
             Assert.That(result.Message, Does.StartWith(expectedException));
             Assert.That(result.Message, Does.Contain("xx-XX").IgnoreCase);
         }
-
+#endif
         [TestFixture, SetCulture("en-GB")]
         public class NestedFixture
         {

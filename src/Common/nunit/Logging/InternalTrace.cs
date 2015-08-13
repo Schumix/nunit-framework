@@ -24,9 +24,9 @@
 using System;
 using System.IO;
 
-#if NUNIT_ENGINE
+#if NUNIT_ENGINE || CORE_ENGINE
 namespace NUnit.Engine.Internal
-#elif NUNIT_FRAMEWORK || NUNITLITE
+#elif NUNIT_FRAMEWORK
 namespace NUnit.Framework.Internal
 #else
 namespace NUnit.Common
@@ -57,6 +57,7 @@ namespace NUnit.Common
         /// </summary>
         public static bool Initialized { get; private set; }
 
+#if !PORTABLE
         /// <summary>
         /// Initialize the internal trace facility using the name of the log
         /// to be written to and the trace level.
@@ -80,6 +81,7 @@ namespace NUnit.Common
             else
                 traceWriter.WriteLine("InternalTrace: Ignoring attempted re-initialization at level {0}", level);
         }
+#endif
 
         /// <summary>
         /// Initialize the internal trace using a provided TextWriter and level

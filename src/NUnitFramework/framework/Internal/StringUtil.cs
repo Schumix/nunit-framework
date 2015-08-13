@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 
 namespace NUnit.Framework.Internal
 {
@@ -17,11 +18,11 @@ namespace NUnit.Framework.Internal
         /// strB is sorted first</returns>
         public static int Compare(string strA, string strB, bool ignoreCase)
         {
-#if SILVERLIGHT
-            StringComparison comparison = ignoreCase ? StringComparison.InvariantCultureIgnoreCase : StringComparison.InvariantCulture;
-            return string.Compare(strA, strB, comparison);
-#else
+            CompareOptions options = ignoreCase ? CompareOptions.IgnoreCase : CompareOptions.None;
+#if NETCF
             return string.Compare(strA, strB, ignoreCase);
+#else
+            return string.Compare(strA, strB, CultureInfo.CurrentCulture, options);
 #endif
         }
 

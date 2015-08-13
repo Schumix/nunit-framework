@@ -35,7 +35,7 @@ namespace NUnit.Framework.Constraints
         private Exception caughtException;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="T:ThrowsConstraint"/> class,
+        /// Initializes a new instance of the <see cref="ThrowsConstraint"/> class,
         /// using a constraint to be applied to the exception.
         /// </summary>
         /// <param name="baseConstraint">A constraint to apply to the caught exception.</param>
@@ -156,7 +156,7 @@ namespace NUnit.Framework.Constraints
             {
                 var invocationDescriptor = GetInvocationDescriptor(invocation);
 
-#if NET_4_0 || NET_4_5
+#if NET_4_0 || NET_4_5 || PORTABLE
                 if (AsyncInvocationRegion.IsAsyncOperation(invocationDescriptor.Delegate))
                 {
                     using (var region = AsyncInvocationRegion.Create(invocationDescriptor.Delegate))

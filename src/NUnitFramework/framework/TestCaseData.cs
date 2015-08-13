@@ -25,22 +25,21 @@ using System;
 using NUnit.Framework.Interfaces;
 using NUnit.Framework.Internal;
 
-// TODO: Remove conditional code
 namespace NUnit.Framework
 {
     /// <summary>
     /// The TestCaseData class represents a set of arguments
     /// and other parameter info to be used for a parameterized
-    /// test case. It is derived from ParameterSet and adds a
+    /// test case. It is derived from TestCaseParameters and adds a
     /// fluent syntax for use in initializing the test case.
     /// </summary>
-    public class TestCaseData : ParameterSet
+    public class TestCaseData : TestCaseParameters
     {
 
         #region Constructors
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="T:TestCaseData"/> class.
+        /// Initializes a new instance of the <see cref="TestCaseData"/> class.
         /// </summary>
         /// <param name="args">The arguments.</param>
         public TestCaseData(params object[] args)
@@ -49,7 +48,7 @@ namespace NUnit.Framework
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="T:TestCaseData"/> class.
+        /// Initializes a new instance of the <see cref="TestCaseData"/> class.
         /// </summary>
         /// <param name="arg">The argument.</param>
         public TestCaseData(object arg)
@@ -58,7 +57,7 @@ namespace NUnit.Framework
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="T:TestCaseData"/> class.
+        /// Initializes a new instance of the <see cref="TestCaseData"/> class.
         /// </summary>
         /// <param name="arg1">The first argument.</param>
         /// <param name="arg2">The second argument.</param>
@@ -68,7 +67,7 @@ namespace NUnit.Framework
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="T:TestCaseData"/> class.
+        /// Initializes a new instance of the <see cref="TestCaseData"/> class.
         /// </summary>
         /// <param name="arg1">The first argument.</param>
         /// <param name="arg2">The second argument.</param>
@@ -162,16 +161,6 @@ namespace NUnit.Framework
             return this;
         }
 
-        /// <summary>
-        /// Ignores this TestCase.
-        /// </summary>
-        /// <returns></returns>
-        public TestCaseData Ignore()
-        {
-            this.RunState = RunState.Ignored;
-            return this;
-        }
-        
         /// <summary>
         /// Marks the test case as explicit.
         /// </summary>

@@ -22,6 +22,7 @@
 // ***********************************************************************
 
 using System;
+using NUnit.Common;
 using NUnit.Framework;
 
 namespace NUnit.ConsoleRunner.Utilities.Tests

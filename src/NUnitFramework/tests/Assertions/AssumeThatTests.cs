@@ -24,11 +24,11 @@
 using System;
 using NUnit.Framework.Constraints;
 
-#if NET_4_0 || NET_4_5
+#if NET_4_0 || NET_4_5 || PORTABLE
 using System.Threading.Tasks;
 #endif
 
-#if NET_4_0
+#if NET_4_0 || PORTABLE
 using Task = System.Threading.Tasks.TaskEx;
 #endif
 
@@ -112,27 +112,6 @@ namespace NUnit.Framework.Assertions
             Assume.That(() => 2 + 2, Is.EqualTo(4), "Should be {0}", 4);
         }
 #endif
-
-        [Test]
-        public void AssumptionPasses_ReferenceAndConstraint()
-        {
-            bool value = true;
-            Assume.That(ref value, Is.True);
-        }
-
-        [Test]
-        public void AssumptionPasses_ReferenceAndConstraintWithMessage()
-        {
-            bool value = true;
-            Assume.That(ref value, Is.True, "Message");
-        }
-
-        [Test]
-        public void AssumptionPasses_ReferenceAndConstraintWithMessageAndArgs()
-        {
-            bool value = true;
-            Assume.That(ref value, Is.True, "Message", 42);
-        }
 
         [Test]
         public void AssumptionPasses_DelegateAndConstraint()
@@ -242,29 +221,6 @@ namespace NUnit.Framework.Assertions
 #endif
 
         [Test]
-        public void FailureThrowsInconclusiveException_ReferenceAndConstraint()
-        {
-            bool value = false;
-            Assert.Throws<InconclusiveException>(() => Assume.That(ref value, Is.True));
-        }
-
-        [Test]
-        public void FailureThrowsInconclusiveException_ReferenceAndConstraintWithMessage()
-        {
-            bool value = false;
-            var ex = Assert.Throws<InconclusiveException>(() => Assume.That(ref value, Is.True, "message"));
-            Assert.That(ex.Message, Does.Contain("message"));
-        }
-
-        [Test]
-        public void FailureThrowsInconclusiveException_ReferenceAndConstraintWithMessageAndArgs()
-        {
-            bool value = false;
-            var ex = Assert.Throws<InconclusiveException>(() => Assume.That(ref value, Is.True, "message is {0}", 42));
-            Assert.That(ex.Message, Does.Contain("message is 42"));
-        }
-
-        [Test]
         public void FailureThrowsInconclusiveException_DelegateAndConstraint()
         {
             Assert.Throws<InconclusiveException>(() => Assume.That(new ActualValueDelegate<int>(ReturnsFive), Is.EqualTo(4)));
@@ -290,7 +246,7 @@ namespace NUnit.Framework.Assertions
             return 5;
         }
 
-#if NET_4_0 || NET_4_5
+#if NET_4_0 || NET_4_5 || PORTABLE
         [Test]
         public void AssumeThatSuccess()
         {

@@ -27,12 +27,12 @@ using NUnit.Framework.Internal;
 using NUnit.TestData;
 using NUnit.TestUtilities;
 
-#if NET_4_0 || NET_4_5
+#if NET_4_0 || NET_4_5 || PORTABLE
 using System;
 using System.Threading.Tasks;
 #endif
 
-#if NET_4_0
+#if NET_4_0 || PORTABLE
 using Task = System.Threading.Tasks.TaskEx;
 #endif
 
@@ -96,27 +96,6 @@ namespace NUnit.Framework.Assertions
             Assert.That(() => 2 + 2, Is.EqualTo(4), "Should be {0}", 4);
         }
 #endif
-
-        [Test]
-        public void AssertionPasses_ReferenceAndConstraint()
-        {
-            bool value = true;
-            Assert.That(ref value, Is.True);
-        }
-
-        [Test]
-        public void AssertionPasses_ReferenceAndConstraintWithMessage()
-        {
-            bool value = true;
-            Assert.That(ref value, Is.True, "Message");
-        }
-
-        [Test]
-        public void AssertionPasses_ReferenceAndConstraintWithMessageAndArgs()
-        {
-            bool value = true;
-            Assert.That(ref value, Is.True, "Message", 42);
-        }
 
         [Test]
         public void AssertionPasses_DelegateAndConstraint()
@@ -204,29 +183,6 @@ namespace NUnit.Framework.Assertions
 #endif
 
         [Test]
-        public void FailureThrowsAssertionException_ReferenceAndConstraint()
-        {
-            bool value = false;
-            Assert.Throws<AssertionException>(() => Assert.That(ref value, Is.True));
-        }
-
-        [Test]
-        public void FailureThrowsAssertionException_ReferenceAndConstraintWithMessage()
-        {
-            bool value = false;
-            var ex = Assert.Throws<AssertionException>(() => Assert.That(ref value, Is.True, "message"));
-            Assert.That(ex.Message, Does.Contain("message"));
-        }
-
-        [Test]
-        public void FailureThrowsAssertionException_ReferenceAndConstraintWithMessageAndArgs()
-        {
-            bool value = false;
-            var ex = Assert.Throws<AssertionException>(() => Assert.That(ref value, Is.True, "message is {0}", 42));
-            Assert.That(ex.Message, Does.Contain("message is 42"));
-        }
-
-        [Test]
         public void FailureThrowsAssertionException_DelegateAndConstraint()
         {
             Assert.Throws<AssertionException>(() => Assert.That(new ActualValueDelegate<int>(ReturnsFive), Is.EqualTo(4)));
@@ -267,7 +223,7 @@ namespace NUnit.Framework.Assertions
             return 5;
         }
 
-#if NET_4_0 || NET_4_5
+#if NET_4_0 || NET_4_5 || PORTABLE
         [Test]
         public void AssertThatSuccess()
         {
@@ -281,6 +237,7 @@ namespace NUnit.Framework.Assertions
                 Assert.That(async () => await AsyncReturnOne(), Is.EqualTo(2)));
         }
 
+#if !PORTABLE
         [Test, Platform(Exclude="Linux", Reason="Intermittent failures on Linux")]
         public void AssertThatErrorTask()
         {
@@ -294,6 +251,7 @@ namespace NUnit.Framework.Assertions
             Assert.That(exception.StackTrace, Does.Contain("ThrowInvalidOperationExceptionTask"));
 #endif
         }
+#endif
 
         [Test]
         public void AssertThatErrorGenericTask()

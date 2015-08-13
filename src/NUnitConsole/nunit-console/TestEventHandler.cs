@@ -27,6 +27,7 @@ using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using System.Xml;
+using NUnit.Common;
 using NUnit.Engine;
 
 namespace NUnit.ConsoleRunner
@@ -41,14 +42,15 @@ namespace NUnit.ConsoleRunner
     {
         private string _displayLabels;
         private TextWriter _outWriter;
+        private TeamCityEventHandler _teamCity;
 
-        private List<string> _messages = new List<string>();
-        
 
-        public TestEventHandler(TextWriter outWriter, string displayLabels)
+        public TestEventHandler(TextWriter outWriter, string displayLabels, bool teamCity)
         {
             _displayLabels = displayLabels;
             _outWriter = outWriter;
+            if (teamCity)
+                _teamCity = new TeamCityEventHandler(outWriter);
         }
 
         #region ITestEventHandler Members
@@ -62,7 +64,8 @@ namespace NUnit.ConsoleRunner
             switch (testEvent.Name)
             {
                 case "start-test":
-                    TestStarted(testEvent);
+                    if (_teamCity != null)
+                        _teamCity.TestStarted(testEvent);
                     break;
 
                 case "test-case":
@@ -70,7 +73,11 @@ namespace NUnit.ConsoleRunner
                     break;
 
                 case "start-suite":
+                    break;
+
                 case "test-suite":
+                    break;
+
                 case "start-run":
                     break;
             }
@@ -81,12 +88,7 @@ namespace NUnit.ConsoleRunner
 
         #region Individual Handlers
 
-        private void TestStarted(XmlNode startNode)
-        {
-            // Placeolder for TeamCity output
-        }
-
-        public void TestFinished(XmlNode testResult)
+        private void TestFinished(XmlNode testResult)
         {
             var testName = testResult.Attributes["fullname"].Value;
             var outputNode = testResult.SelectSingleNode("output");
@@ -101,6 +103,9 @@ namespace NUnit.ConsoleRunner
 
                 WriteTestOutput(outputNode);
             }
+
+            if (_teamCity != null)
+                _teamCity.TestFinished(testResult);
         }
 
         private void WriteTestLabel(string name)

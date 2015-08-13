@@ -20,7 +20,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
-
+#if !PORTABLE
 using System;
 using NUnit.Framework.Interfaces;
 using NUnit.Framework.Internal;
@@ -32,7 +32,7 @@ namespace NUnit.Framework.Attributes
     /// <summary>
     /// Tests for MaxTime decoration.
     /// </summary>
-    [TestFixture]
+    [TestFixture, Parallelizable(ParallelScope.None)]
     public class MaxTimeTests
     {
         [Test,MaxTime(1000)]
@@ -46,7 +46,16 @@ namespace NUnit.Framework.Attributes
         {
             ITestResult suiteResult = TestBuilder.RunTestFixture(typeof(MaxTimeFixture));
             Assert.AreEqual(ResultState.ChildFailure, suiteResult.ResultState);
-            TestResult result = (TestResult)suiteResult.Children[0];
+            ITestResult result = suiteResult.Children[0];
+            Assert.That(result.Message, Does.Contain("exceeds maximum of 1ms"));
+        }
+
+        [Test]
+        public void MaxTimeExceededOnTestCase()
+        {
+            ITestResult suiteResult = TestBuilder.RunTestFixture(typeof(MaxTimeFixtureWithTestCase));
+            Assert.AreEqual(ResultState.ChildFailure, suiteResult.ResultState);
+            ITestResult result = suiteResult.Children[0].Children[0];
             Assert.That(result.Message, Does.Contain("exceeds maximum of 1ms"));
         }
 
@@ -73,9 +82,10 @@ namespace NUnit.Framework.Attributes
         {
             ITestResult result = TestBuilder.RunTestFixture(typeof(MaxTimeFixtureWithError));
             Assert.AreEqual(ResultState.ChildFailure, result.ResultState);
-            result = (ITestResult)result.Children[0];
+            result = result.Children[0];
             Assert.AreEqual(ResultState.Error, result.ResultState);
             Assert.That(result.Message, Does.Contain("Exception message"));
         }
     }
 }
+#endif

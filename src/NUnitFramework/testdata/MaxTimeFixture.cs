@@ -8,10 +8,10 @@
 // distribute, sublicense, and/or sell copies of the Software, and to
 // permit persons to whom the Software is furnished to do so, subject to
 // the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be
 // included in all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -21,7 +21,10 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ***********************************************************************
 
+#if !PORTABLE
 using System;
+using System.Threading;
+
 using NUnit.Framework;
 
 namespace NUnit.TestData
@@ -32,17 +35,28 @@ namespace NUnit.TestData
         [Test, MaxTime(1)]
         public void MaxTimeExceeded()
         {
-#if NETCF
-            long endTime = DateTime.Now.Ticks + TimeSpan.TicksPerMillisecond * 20;
-            while (endTime > DateTime.Now.Ticks) ;
-#else
 #if SILVERLIGHT
             // Silverlight does not have the high resolution StopWatch, so
             // we need to delay longer than their minimum clock resolution
-            System.Threading.Thread.Sleep(1000);
+            Thread.Sleep(1000);
 #else
-            System.Threading.Thread.Sleep(20);
+            Thread.Sleep(20);
 #endif
+        }
+    }
+
+    [TestFixture]
+    public class MaxTimeFixtureWithTestCase
+    {
+        [TestCase(5), MaxTime(1)]
+        public void MaxTimeExceeded(int x)
+        {
+#if SILVERLIGHT
+            // Silverlight does not have the high resolution StopWatch, so
+            // we need to delay longer than their minimum clock resolution
+            Thread.Sleep(1000);
+#else
+            Thread.Sleep(20);
 #endif
         }
     }
@@ -53,7 +67,7 @@ namespace NUnit.TestData
         [Test, MaxTime(1)]
         public void MaxTimeExceeded()
         {
-            System.Threading.Thread.Sleep(20);
+            Thread.Sleep(20);
             Assert.Fail("Intentional Failure");
         }
     }
@@ -64,8 +78,9 @@ namespace NUnit.TestData
         [Test, MaxTime(1)]
         public void MaxTimeExceeded()
         {
-            System.Threading.Thread.Sleep(20);
+            Thread.Sleep(20);
             throw new Exception("Exception message");
         }
     }
 }
+#endif
